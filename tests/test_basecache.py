@@ -21,6 +21,8 @@ def test_invalid_key():
     with pytest.raises(NotImplementedError):
         cache.clear()
     with pytest.raises(NotImplementedError):
+        cache.has_key('')
+    with pytest.raises(NotImplementedError):
         cache.decr('x')
     with pytest.raises(NotImplementedError):
         cache.ex_set('x', 'x')
@@ -34,9 +36,12 @@ def test_invalid_key():
         cache.delete('')
     with pytest.raises(NotImplementedError):
         cache.inspect('')
-
+    with pytest.raises(NotImplementedError):
+        cache.__iter__()
     with pytest.warns(RuntimeWarning):
         cache.evictor()
+
+    str(cache).startswith('<')
 
 
 class UserCache(SimpleCache):

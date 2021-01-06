@@ -9,7 +9,7 @@ from pathlib import Path
 from sqlite3.dbapi2 import Connection, Cursor, connect, OperationalError
 from threading import Lock, local, get_ident
 from time import time as current, sleep
-from typing import NoReturn, Type, Union, Optional, Dict, Any, List, Tuple, Callable, Iterator
+from typing import NoReturn, Type, Union, Optional, Dict, Any, List, Tuple, Iterator
 from cache3 import BaseCache
 from cache3.setting import (
     DEFAULT_TIMEOUT, DEFAULT_TAG, DEFAULT_STORE,

@@ -221,7 +221,9 @@ class BaseCache:
 
     def has_key(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
         """ Return True if the key is in the cache and has not expired. """
-        return self.get(key, empty, tag) is not empty
+        raise NotImplementedError(
+            'subclasses of BaseCache must provide a incr() method'
+        )
 
     def memoize(self, tag: Optional[str] = DEFAULT_TAG, timeout: float = DEFAULT_TIMEOUT) -> Any:
         """ The cache is decorated with the return value of the function,

@@ -3,7 +3,6 @@
 # DATE: 2021/11/6
 # Author: clarkmonkey@163.com
 
-
 from typing import Any, List, Tuple, Type, Optional
 
 import pytest
@@ -152,6 +151,11 @@ class GeneralCase:
         inspect = self.cache.inspect(key)
         assert isinstance(inspect, dict)
         return inspect['expire']
+
+    def test_config(self):
+
+        self.cache.config(evict='lru_evict')
+        assert self.cache.evictor == self.cache.lru_evict
 
     def teardown_class(self):
         self.cache.clear()
