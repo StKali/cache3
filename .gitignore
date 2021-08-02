@@ -4,6 +4,9 @@ __pycache__/
 # pycharm
 .idea
 
+# pytest
+.benchmarks
+
 # mac
 .DS_Store
 
