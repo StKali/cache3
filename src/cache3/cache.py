@@ -108,5 +108,11 @@ class SimpleCache(BaseCache):
         return True
 
 
+# Thread safe cache in memory
+class SafeCache(SimpleCache):
+
+    LOCK = Lock
+
+
 if __name__ == '__main__':
     doctest.testmod()
