@@ -5,7 +5,7 @@
 
 from typing import Any, Type, Optional, Union
 
-from setting import DEFAULT_TAG, DEFAULT_TIMEOUT
+from cache3.setting import DEFAULT_TAG, DEFAULT_TIMEOUT
 
 Number: Type = Union[int, float]
 TG: Type = Optional[str]

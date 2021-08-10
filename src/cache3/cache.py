@@ -11,7 +11,7 @@ from typing import Dict, Any, Type, Union, Optional
 
 from cache3 import BaseCache
 from cache3.utils import NullContext
-from setting import DEFAULT_TIMEOUT, DEFAULT_TAG
+from cache3.setting import DEFAULT_TIMEOUT, DEFAULT_TAG
 
 LK: Type = Union[NullContext, Lock]
 Number: Type = Union[int, float]
