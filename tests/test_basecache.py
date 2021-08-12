@@ -5,12 +5,23 @@
 
 from typing import *
 
+import pytest
 
-def test_basecache() -> NoReturn:
-    """
-    
-    Args: 
+from cache3.cache import BaseCache
 
-    Returns:
 
-    """
+def test_invalid_key() -> NoReturn:
+    cache = BaseCache()
+
+    with pytest.raises(NotImplementedError):
+        cache.clear()
+    with pytest.raises(NotImplementedError):
+        cache.ex_set('x', 'x')
+    with pytest.raises(NotImplementedError):
+        cache.get('')
+    with pytest.raises(NotImplementedError):
+        cache.set('', '')
+    with pytest.raises(NotImplementedError):
+        cache.touch('', 1)
+    with pytest.raises(NotImplementedError):
+        cache.delete('')
