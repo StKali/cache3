@@ -107,6 +107,15 @@ class SimpleCache(BaseCache):
         self._expire_info[key] = current() + timeout
         return True
 
+    def inspect(self, key: str, tag: TG = DEFAULT_TAG) -> Optional[Dict[str, Any]]:
+
+        if not self._has_expired(key):
+            return {
+                'key': key,
+                'value': self._cache[key],
+                'expire': self._expire_info[key]
+            }
+
 
 # Thread safe cache in memory
 class SafeCache(SimpleCache):

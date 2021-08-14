@@ -3,7 +3,7 @@
 # DATE: 2021/7/24
 # Author: clarkmonkey@163.com
 
-from typing import Any, Type, Optional, Union
+from typing import Any, Type, Optional, Union, Dict
 
 from cache3.setting import DEFAULT_TAG, DEFAULT_TIMEOUT
 
@@ -55,3 +55,12 @@ class BaseCache:
     def clear(self) -> bool:
         """ Clear all caches. """
         raise NotImplementedError('subclasses of BaseCache must provide a clear() method')
+
+    def inspect(self, key: str, tag: TG = DEFAULT_TAG) -> Optional[Dict[str, Any]]:
+        """ Displays the information of the key value if it exists in cache.
+
+        * This api is mostly for testing purposes.
+
+        Returns the details if the key exists, otherwise None.
+        """
+        raise NotImplementedError('subclasses of BaseCache must provide a inspect() method')
