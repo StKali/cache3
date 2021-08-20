@@ -26,3 +26,5 @@ DEFAULT_NAME: str = 'default.cache3'
 ####################
 MAX_KEY_LENGTH: int = 1 << 10    # 1K
 MIN_KEY_LENGTH: int = 1
+MAX_TIMEOUT: int = 365 * 24 * 60 * 60
+MIN_TIMEOUT: int = 0

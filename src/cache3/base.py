@@ -5,7 +5,8 @@
 
 from typing import Any, Type, Optional, Union, Dict
 
-from cache3.setting import DEFAULT_TAG, DEFAULT_TIMEOUT
+from cache3.setting import DEFAULT_TAG, DEFAULT_TIMEOUT, MAX_TIMEOUT, MIN_TIMEOUT, MAX_KEY_LENGTH, DEFAULT_NAME
+from cache3.validate import NumberValidate, StringValidate
 
 Number: Type = Union[int, float]
 TG: Type = Optional[str]
@@ -15,6 +16,19 @@ class BaseCache:
     """ A base class that specifies the API that caching
     must implement and some default implementations.
     """
+
+    name: str = StringValidate(minsize=1, maxsize=MAX_KEY_LENGTH)
+    timeout: Number = NumberValidate(minvalue=MIN_TIMEOUT, maxvalue=MAX_TIMEOUT)
+
+    def __init__(
+            self,
+            name: str = DEFAULT_NAME,
+            timeout: Number = DEFAULT_TIMEOUT,
+            **kwargs
+    ) -> None:
+        self.name: str = name
+        self.timeout: Number = timeout
+        self._kwargs: Dict[str, Any] = kwargs
 
     def set(self, key: str, value: Any, timeout: Number = DEFAULT_TIMEOUT,
             tag: TG = DEFAULT_TAG) -> bool:

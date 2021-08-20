@@ -41,9 +41,10 @@ class SimpleCache(BaseCache):
 
     LOCK = NullContext
 
-    def __init__(self, name: str, timeout: float, *args, **kwargs):
-        self._name: str = name
-        self._timeout: float = timeout
+    def __init__(self, *args, **kwargs) -> None:
+        super(SimpleCache, self).__init__(*args, **kwargs)
+
+        # Attributes _name, _timeout from validate.
         self._cache: OrderedDict[str, Any] = _caches.setdefault(self._name, OrderedDict())
         self._expire_info: Dict[str, Any] = _expire_info.setdefault(self._name, {})
         self._lock: LK = _locks.setdefault(self._name, self.LOCK())
