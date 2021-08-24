@@ -5,7 +5,10 @@
 
 from typing import Any, Type, Optional, Union, Dict
 
-from cache3.setting import DEFAULT_TAG, DEFAULT_TIMEOUT, MAX_TIMEOUT, MIN_TIMEOUT, MAX_KEY_LENGTH, DEFAULT_NAME
+from cache3.setting import (
+    DEFAULT_TAG, DEFAULT_TIMEOUT, MAX_TIMEOUT, MIN_TIMEOUT, MAX_KEY_LENGTH,
+    DEFAULT_NAME, DEFAULT_MAX_SIZE
+)
 from cache3.validate import NumberValidate, StringValidate
 
 Number: Type = Union[int, float]
@@ -19,15 +22,18 @@ class BaseCache:
 
     name: str = StringValidate(minsize=1, maxsize=MAX_KEY_LENGTH)
     timeout: Number = NumberValidate(minvalue=MIN_TIMEOUT, maxvalue=MAX_TIMEOUT)
+    max_size: int = NumberValidate(minvalue=0)
 
     def __init__(
             self,
             name: str = DEFAULT_NAME,
             timeout: Number = DEFAULT_TIMEOUT,
+            max_size: int = DEFAULT_MAX_SIZE,
             **kwargs
     ) -> None:
         self.name: str = name
         self.timeout: Number = timeout
+        self.max_size: int = max_size
         self._kwargs: Dict[str, Any] = kwargs
 
     def set(self, key: str, value: Any, timeout: Number = DEFAULT_TIMEOUT,
@@ -78,3 +84,9 @@ class BaseCache:
         Returns the details if the key exists, otherwise None.
         """
         raise NotImplementedError('subclasses of BaseCache must provide a inspect() method')
+
+    def __repr__(self) -> str:
+        return (
+                "<%s '%s' timeout:%.2f>"
+                % (self.__class__.__name__, self._name, self._timeout)
+        )
