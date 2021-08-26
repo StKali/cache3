@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 # DATE: 2021/7/24
 # Author: clarkmonkey@163.com
-
-from typing import Any, Type, Optional, Union, Dict
+import warnings
+from typing import Any, Type, Optional, Union, Dict, Tuple
 
 from cache3.setting import (
     DEFAULT_TAG, DEFAULT_TIMEOUT, MAX_TIMEOUT, MIN_TIMEOUT, MAX_KEY_LENGTH,
@@ -13,6 +13,14 @@ from cache3.validate import NumberValidate, StringValidate
 
 Number: Type = Union[int, float]
 TG: Type = Optional[str]
+
+
+class CacheKeyWarning(RuntimeWarning):
+    """ A warning that is thrown when the key is not legitimate """
+
+
+class InvalidCacheKey(ValueError):
+    """ An Error thrown when the key invalid """
 
 
 class BaseCache:
@@ -35,6 +43,52 @@ class BaseCache:
         self.timeout: Number = timeout
         self.max_size: int = max_size
         self._kwargs: Dict[str, Any] = kwargs
+
+    def make_key(self, key: str, tag: Optional[str]) -> str:
+        """Default function to generate keys.
+
+        Construct the key used by all other methods. By default,
+        the key will be converted to a unified string format
+        as much as possible. At the same time, subclasses typically
+        override the method to generate a specific key.
+        """
+        return '%s(%s):%s(%s)' % (type(key).__name__, key, type(tag).__name__, tag)
+
+    def make_and_validate_key(self, key: str, tag: Optional[str] = None) -> str:
+        """ Validate keys and convert them into a friendlier format for storing
+        key-value pairs.
+
+        Returns a friendlier format key if key is validated, thrown ``InvalidCacheKey``
+        otherwise.
+        """
+
+        key: str = self.make_key(key, tag)
+        msg, validated = self.validate_key(key)
+        if validated:
+            return key
+        raise InvalidCacheKey(msg)
+
+    def validate_key(self, key: str) -> Tuple[Optional[str], bool]:
+        """ The incoming key is validated to fit the logic of the
+        backend storage. It is always closely related to ``make_key(...)``
+
+        By default, it will check the type and length.
+        """
+
+        if not isinstance(key, str):
+            return (
+                'The key must be a string (%s is %s)'
+                % (key, type(key).__name__), False
+            )
+
+        if len(key) > MAX_KEY_LENGTH:
+            warnings.warn(
+                'The key is too long( > %s), which can cause '
+                'unnecessary waste of resources and risk: %s...%s.'
+                % (MAX_KEY_LENGTH, key[:10], key[-10:]),
+                CacheKeyWarning
+            )
+        return None, True
 
     def set(self, key: str, value: Any, timeout: Number = DEFAULT_TIMEOUT,
             tag: TG = DEFAULT_TAG) -> bool:
