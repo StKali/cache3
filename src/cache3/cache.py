@@ -117,6 +117,19 @@ class SimpleCache(BaseCache):
                 'expire': self._expire_info[key]
             }
 
+    def incr(self, key: str, delta: int = 1, tag: TG = DEFAULT_TAG) -> Number:
+
+        key: str = self.make_and_validate_key(key, tag=tag)
+        with self._lock:
+            if self._has_expired(key):
+                self._delete(key)
+                raise ValueError("Key '%s' not found" % key)
+            value: Any = self._cache[key]
+            new_value: int = value + delta
+            self._cache[key] = new_value
+            self._cache.move_to_end(key, last=False)
+        return new_value
+
 
 # Thread safe cache in memory
 class SafeCache(SimpleCache):
