@@ -51,6 +51,9 @@ class SimpleCache(BaseCache):
 
     def ex_set(self, key: str, value: Any, timeout: float = DEFAULT_TIMEOUT, tag: Optional[str] = DEFAULT_TAG) -> bool:
 
+        key: str = self.make_and_validate_key(key, tag=tag)
+        value: Any = self.serialize(value)
+
         with self._lock:
             if self._has_expired(key):
                 self._set(key, value, timeout)
@@ -59,20 +62,24 @@ class SimpleCache(BaseCache):
 
     def get(self, key: str, default: Any = None, tag: TG = DEFAULT_TAG) -> Any:
 
+        key: str = self.make_and_validate_key(key, tag=tag)
         with self._lock:
             if self._has_expired(key):
                 self._delete(key)
                 return default
             value: Any = self._cache[key]
             self._cache.move_to_end(key, last=False)
-        return value
+        return self.deserialize(value)
 
     def set(self, key: Any, value: Any, timeout: Number = DEFAULT_TIMEOUT, tag: TG = DEFAULT_TAG) -> bool:
+        key: str = self.make_and_validate_key(key, tag=tag)
+        value: Any = self.serialize(value)
         with self._lock:
             return self._set(key, value, timeout)
 
     def touch(self, key: str, timeout: Number, tag: TG = DEFAULT_TAG) -> bool:
 
+        key: str = self.make_and_validate_key(key, tag=tag)
         with self._lock:
             if self._has_expired(key):
                 return False
@@ -81,6 +88,7 @@ class SimpleCache(BaseCache):
 
     def delete(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
 
+        key: str = self.make_and_validate_key(key, tag=tag)
         with self._lock:
             return self._delete(key)
 
@@ -88,24 +96,6 @@ class SimpleCache(BaseCache):
         with self._lock:
             self._cache.clear()
             self._expire_info.clear()
-        return True
-
-    def _has_expired(self, key: str) -> bool:
-        exp: float = self._expire_info.get(key, -1.)
-        return exp is not None and exp <= current()
-
-    def _delete(self, key: str) -> bool:
-        try:
-            del self._cache[key]
-            del self._expire_info[key]
-        except KeyError:
-            return False
-        return True
-
-    def _set(self, key: str, value: Any, timeout=DEFAULT_TIMEOUT) -> bool:
-        self._cache[key] = value
-        self._cache.move_to_end(key, last=False)
-        self._expire_info[key] = current() + timeout
         return True
 
     def inspect(self, key: str, tag: TG = DEFAULT_TAG) -> Optional[Dict[str, Any]]:
@@ -129,6 +119,40 @@ class SimpleCache(BaseCache):
             self._cache[key] = new_value
             self._cache.move_to_end(key, last=False)
         return new_value
+
+    def _has_expired(self, key: str) -> bool:
+        exp: float = self._expire_info.get(key, -1.)
+        return exp is not None and exp <= current()
+
+    def _delete(self, key: str) -> bool:
+        try:
+            del self._cache[key]
+            del self._expire_info[key]
+        except KeyError:
+            return False
+        return True
+
+    def _set(self, key: str, value: Any, timeout=DEFAULT_TIMEOUT) -> bool:
+        self._cache[key] = value
+        self._cache.move_to_end(key, last=False)
+        self._expire_info[key] = current() + timeout
+        return True
+
+    def serialize(self, value: Any, *args, **kwargs) -> Any:
+        """ Serialize the value for easy backend storage.
+        By default, return directly to value doing nothing.
+        """
+        return value
+
+    def deserialize(self, dump: Any, *args, **kwargs) -> Any:
+        """ Restores the value returned by the backend to be consistent
+        with when deposited. Usually it is always the opposite of the
+        ``serialize(...)`` method.
+
+        By default, return directly to value doing nothing.
+        """
+
+        return dump
 
 
 # Thread safe cache in memory
