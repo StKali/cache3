@@ -154,6 +154,10 @@ class SimpleCache(BaseCache):
 
         return dump
 
+    __delitem__ = delete
+    __getitem__ = get
+    __setitem__ = set
+
 
 # Thread safe cache in memory
 class SafeCache(SimpleCache):

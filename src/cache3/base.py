@@ -154,3 +154,8 @@ class BaseCache:
                 "<%s '%s' timeout:%.2f>"
                 % (self.__class__.__name__, self._name, self._timeout)
         )
+
+    __delitem__ = delete
+    __getitem__ = get
+    __setitem__ = set
+
