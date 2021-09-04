@@ -3,7 +3,10 @@
 # DATE: 2021/7/24
 # Author: clarkmonkey@163.com
 import warnings
+from time import time as current
 from typing import Any, Type, Optional, Union, Dict, Tuple
+
+from pyparsing import empty
 
 from cache3.setting import (
     DEFAULT_TAG, DEFAULT_TIMEOUT, MAX_TIMEOUT, MIN_TIMEOUT, MAX_KEY_LENGTH,
@@ -80,14 +83,8 @@ class BaseCache:
         """
         raise NotImplementedError('subclasses of BaseCache must provide a delete() method')
 
-    def clear(self) -> bool:
-        """ Clear all caches. """
-        raise NotImplementedError('subclasses of BaseCache must provide a clear() method')
-
     def inspect(self, key: str, tag: TG = DEFAULT_TAG) -> Optional[Dict[str, Any]]:
         """ Displays the information of the key value if it exists in cache.
-
-        * This api is mostly for testing purposes.
 
         Returns the details if the key exists, otherwise None.
         """
@@ -102,20 +99,6 @@ class BaseCache:
         override the method to generate a specific key.
         """
         return '%s(%s):%s(%s)' % (type(key).__name__, key, type(tag).__name__, tag)
-
-    def make_and_validate_key(self, key: str, tag: Optional[str] = None) -> str:
-        """ Validate keys and convert them into a friendlier format for storing
-        key-value pairs.
-
-        Returns a friendlier format key if key is validated, thrown ``InvalidCacheKey``
-        otherwise.
-        """
-
-        key: str = self.make_key(key, tag)
-        msg, validated = self.validate_key(key)
-        if validated:
-            return key
-        raise InvalidCacheKey(msg)
 
     def validate_key(self, key: str) -> Tuple[Optional[str], bool]:
         """ The incoming key is validated to fit the logic of the
@@ -139,6 +122,45 @@ class BaseCache:
             )
         return None, True
 
+    def make_and_validate_key(self, key: str, tag: Optional[str] = None) -> str:
+        """ Validate keys and convert them into a friendlier format for storing
+        key-value pairs.
+
+        Returns a friendlier format key if key is validated, thrown ``InvalidCacheKey``
+        otherwise.
+        """
+
+        key: str = self.make_key(key, tag)
+        msg, validated = self.validate_key(key)
+        if validated:
+            return key
+        raise InvalidCacheKey(msg)
+
+    def get_backend_timeout(self, timeout=DEFAULT_TIMEOUT) -> Optional[float]:
+        """ Return the timeout value usable by this backend based upon the provided
+        timeout.
+        """
+        if timeout == DEFAULT_TIMEOUT:
+            timeout = self._timeout
+
+        return None if timeout is None else current() + timeout
+
+    def serialize(self, value: Any, *args, **kwargs) -> Any:
+        """ Serialize the value for easy backend storage.
+        By default, return directly to value doing nothing.
+        """
+        return value
+
+    def deserialize(self, dump: Any, *args, **kwargs) -> Any:
+        """ Restores the value returned by the backend to be consistent
+        with when deposited. Usually it is always the opposite of the
+        ``serialize(...)`` method.
+
+        By default, return directly to value doing nothing.
+        """
+
+        return dump
+
     def incr(self, key: str, delta: int = 1, tag: TG = DEFAULT_TAG) -> Number:
         """ Add delta to value in the cache. If the key does not exist, raise a
         ValueError exception.  """
@@ -149,13 +171,17 @@ class BaseCache:
         a ValueError exception. """
         return self.incr(key, -delta, tag)
 
+    def has_key(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
+        """ Return True if the key is in the cache and has not expired. """
+        return self.get(key, empty, tag) is not empty
+
+    def clear(self) -> bool:
+        """ Empty all caches. """
+        raise NotImplementedError('subclasses of BaseCache must provide a clear() method')
+
     def __repr__(self) -> str:
-        return (
-                "<%s '%s' timeout:%.2f>"
-                % (self.__class__.__name__, self._name, self._timeout)
-        )
+        return "<%s '%s' timeout:%.2f>" % (self.__class__.__name__, self._name, self._timeout)
 
     __delitem__ = delete
     __getitem__ = get
     __setitem__ = set
-
