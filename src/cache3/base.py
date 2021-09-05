@@ -4,13 +4,13 @@
 # Author: clarkmonkey@163.com
 import warnings
 from time import time as current
-from typing import Any, Type, Optional, Union, Dict, Tuple
+from typing import Any, Type, Optional, Union, Dict, Tuple, Callable, NoReturn
 
 from pyparsing import empty
 
 from cache3.setting import (
     DEFAULT_TAG, DEFAULT_TIMEOUT, MAX_TIMEOUT, MIN_TIMEOUT, MAX_KEY_LENGTH,
-    DEFAULT_NAME, DEFAULT_MAX_SIZE
+    DEFAULT_NAME, DEFAULT_MAX_SIZE, DEFAULT_EVICT, DEFAULT_CULL_SIZE
 )
 from cache3.validate import NumberValidate, StringValidate
 
@@ -47,18 +47,29 @@ class BaseCache:
         self.max_size: int = max_size
         self._kwargs: Dict[str, Any] = kwargs
 
+    def config(self, **kwargs) -> NoReturn:
+        """ The cache is configured in fine grain By default,
+        Configure the cache eviction policy.
+        """
+        self._evict = kwargs.get('evict', DEFAULT_EVICT)
+        self._cull_size = kwargs.get('cull_size', DEFAULT_CULL_SIZE)
+
     def set(self, key: str, value: Any, timeout: Number = DEFAULT_TIMEOUT,
             tag: TG = DEFAULT_TAG) -> bool:
-        """ Set a value in the cache. Use timeout for the key if it's given, Otherwise use the
-        default timeout
+        """ Set a value in the cache. Use timeout for the key if
+        it's given, Otherwise use the default timeout.
         """
-        raise NotImplementedError('subclasses of BaseCache must provide a set() method.')
+        raise NotImplementedError(
+            'subclasses of BaseCache must provide a set() method.'
+        )
 
     def get(self, key: str, default: Any = None, tag: TG = DEFAULT_TAG) -> Any:
         """ Fetch a given key from the cache. If the key does not exist, return
         default, which itself defaults to None.
         """
-        raise NotImplementedError('subclasses of BaseCache must provide a get() method')
+        raise NotImplementedError(
+            'subclasses of BaseCache must provide a get() method'
+        )
 
     def ex_set(self, key: str, value: Any, timeout: float = DEFAULT_TIMEOUT,
                tag: Optional[str] = DEFAULT_TAG) -> bool:
@@ -68,7 +79,9 @@ class BaseCache:
 
         Return True if the value was stored, False otherwise.
         """
-        raise NotImplementedError('subclasses of BaseCache must provide an ex_set() method')
+        raise NotImplementedError(
+            'subclasses of BaseCache must provide an ex_set() method'
+        )
 
     def touch(self, key: str, timeout: Number, tag: TG = DEFAULT_TAG) -> bool:
         """ Update the key's expiry time using timeout. Return True if successful
@@ -178,6 +191,41 @@ class BaseCache:
     def clear(self) -> bool:
         """ Empty all caches. """
         raise NotImplementedError('subclasses of BaseCache must provide a clear() method')
+
+    @property
+    def evict(self) -> Callable:
+        """ Implementation of the cache eviction policy.
+
+        The ``_evict`` parameter is used to determine the eviction policy.
+        By default, the lru algorithm is used to evict the cache.
+
+        The behavior of a cache eviction policy always gets the method by
+        ``_evict`` property, so the default behavior can be modified through
+        the ``config()`` method. the mru_evict will be use, if cache.config(
+        evict="mru_evict") and the cache has been implemented ``mru_evict()``.
+
+        Returns evict method if the ``_evict`` is a callable object, thrown
+        warning otherwise.
+        """
+
+        evict: Callable = getattr(self, self._evict, empty)
+        if evict is empty:
+            warnings.warn(
+                "Not found '%s' evict method, it will cause the"
+                "cache to grow without limit." % self._evict,
+                RuntimeWarning
+            )
+            # Just to return a callable object ~.
+            return object
+
+        if not callable(evict):
+            warnings.warn(
+                "Invalid evict '%s', It must a callable object." % evict,
+                RuntimeWarning
+            )
+            return object
+
+        return evict
 
     def __repr__(self) -> str:
         return "<%s '%s' timeout:%.2f>" % (self.__class__.__name__, self._name, self._timeout)

@@ -3,7 +3,7 @@
 # DATE: 2021/7/24
 # Author: clarkmonkey@163.com
 
-from typing import Tuple
+from typing import Tuple, Type
 
 ####################
 #    INFORMATION
@@ -28,3 +28,10 @@ MAX_KEY_LENGTH: int = 1 << 10    # 1K
 MIN_KEY_LENGTH: int = 1
 MAX_TIMEOUT: int = 365 * 24 * 60 * 60
 MIN_TIMEOUT: int = 0
+
+EVICT: Type = str
+EVICT_LRU: EVICT = 'lru_evict'
+EVICT_FIFO: EVICT = 'fifo_evict'
+EVICT_LFU: EVICT = 'lfu_evict'
+
+DEFAULT_EVICT: EVICT = EVICT_LRU
