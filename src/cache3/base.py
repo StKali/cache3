@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 # DATE: 2021/7/24
 # Author: clarkmonkey@163.com
+
 import warnings
 from time import time as current
-from typing import Any, Type, Optional, Union, Dict, Tuple, Callable, NoReturn
+from typing import Any, Type, Optional, Union, Dict, Tuple, Callable, NoReturn, List
 
 from pyparsing import empty
 
@@ -83,25 +84,62 @@ class BaseCache:
             'subclasses of BaseCache must provide an ex_set() method'
         )
 
+    def get_many(self, keys: List[str], tag: TG = DEFAULT_TAG) -> Dict[str, Any]:
+        """ Fetch a bunch of keys from the cache. For certain backends (memcached,
+        pgsql) this can be *much* faster when fetching multiple values.
+
+        Return a dict mapping each key in keys to its value. If the given
+        key is missing, it will be missing from the response dict.
+        """
+
+        returns: Dict[Any, Any] = dict()
+        for key in keys:
+            value: Any = self.get(key, empty, tag)
+            if value is not empty:
+                returns[key] = value
+        return returns
+
+    def get_or_set(self, key: str, default: Any, timeout=DEFAULT_TIMEOUT,
+                   tag: TG = DEFAULT_TAG) -> Any:
+        """ Fetch a given key from the cache. If the key does not exist,
+        add the key and set it to the default value. If timeout is given,
+        use that timeout for the key; otherwise use the default cache timeout.
+
+        Return the value of the key stored or retrieved.
+        """
+        value: Any = self.get(key, empty, tag=tag)
+        if value is empty:
+            self.set(key, default, timeout=timeout, tag=tag)
+            # Fetch the value again to avoid a race condition if another caller
+            # added a value between the first get() and the add() above.
+            return self.get(key, default, tag=tag)
+        return value
+
     def touch(self, key: str, timeout: Number, tag: TG = DEFAULT_TAG) -> bool:
         """ Update the key's expiry time using timeout. Return True if successful
         or False if the key does not exist.
         """
-        raise NotImplementedError('subclasses of BaseCache must provide a touch() method')
+        raise NotImplementedError(
+            'subclasses of BaseCache must provide a touch() method'
+        )
 
     def delete(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
         """ Delete a key from the cache
 
         Return True if delete success, False otherwise.
         """
-        raise NotImplementedError('subclasses of BaseCache must provide a delete() method')
+        raise NotImplementedError(
+            'subclasses of BaseCache must provide a delete() method'
+        )
 
     def inspect(self, key: str, tag: TG = DEFAULT_TAG) -> Optional[Dict[str, Any]]:
         """ Displays the information of the key value if it exists in cache.
 
         Returns the details if the key exists, otherwise None.
         """
-        raise NotImplementedError('subclasses of BaseCache must provide a inspect() method')
+        raise NotImplementedError(
+            'subclasses of BaseCache must provide a inspect() method'
+        )
 
     def make_key(self, key: str, tag: Optional[str]) -> str:
         """Default function to generate keys.
@@ -150,8 +188,8 @@ class BaseCache:
         raise InvalidCacheKey(msg)
 
     def get_backend_timeout(self, timeout=DEFAULT_TIMEOUT) -> Optional[float]:
-        """ Return the timeout value usable by this backend based upon the provided
-        timeout.
+        """ Return the timeout value usable by this backend based upon the
+        provided timeout.
         """
         if timeout == DEFAULT_TIMEOUT:
             timeout = self._timeout
@@ -177,11 +215,13 @@ class BaseCache:
     def incr(self, key: str, delta: int = 1, tag: TG = DEFAULT_TAG) -> Number:
         """ Add delta to value in the cache. If the key does not exist, raise a
         ValueError exception.  """
-        raise NotImplementedError('subclasses of BaseCache must provide a incr() method')
+        raise NotImplementedError(
+            'subclasses of BaseCache must provide a incr() method'
+        )
 
     def decr(self, key: str, delta: int = 1, tag: TG = DEFAULT_TAG) -> Number:
-        """ Subtract delta from value in the cache. If the key does not exist, raise
-        a ValueError exception. """
+        """ Subtract delta from value in the cache. If the key does not exist,
+         raise a ValueError exception. """
         return self.incr(key, -delta, tag)
 
     def has_key(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
@@ -190,7 +230,9 @@ class BaseCache:
 
     def clear(self) -> bool:
         """ Empty all caches. """
-        raise NotImplementedError('subclasses of BaseCache must provide a clear() method')
+        raise NotImplementedError(
+            'subclasses of BaseCache must provide a clear() method'
+        )
 
     @property
     def evict(self) -> Callable:
@@ -228,7 +270,9 @@ class BaseCache:
         return evict
 
     def __repr__(self) -> str:
-        return "<%s '%s' timeout:%.2f>" % (self.__class__.__name__, self._name, self._timeout)
+        return "<%s '%s' timeout:%.2f>" % (
+            self.__class__.__name__, self._name, self._timeout
+        )
 
     __delitem__ = delete
     __getitem__ = get
