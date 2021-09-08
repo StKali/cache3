@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # DATE: 2021/7/24
 # Author: clarkmonkey@163.com
-
+import functools
 import warnings
 from time import time as current
 from typing import Any, Type, Optional, Union, Dict, Tuple, Callable, NoReturn, List
@@ -227,6 +227,30 @@ class BaseCache:
     def has_key(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
         """ Return True if the key is in the cache and has not expired. """
         return self.get(key, empty, tag) is not empty
+
+    def memoize(self, tag: Optional[str] = DEFAULT_TAG, timeout: float = DEFAULT_TIMEOUT) -> Any:
+        """ The cache is decorated with the return value of the function,
+        and the timeout is available. """
+
+        if callable(tag):
+            raise TypeError(
+                "Mame cannot be callable. ('@cache.memoize()' not '@cache.memoize')."
+            )
+
+        def decorator(func) -> Callable[[Callable[[Any], Any]], Any]:
+            """ Decorator created by memoize() for callable `func`."""
+
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs) -> Any:
+                """Wrapper for callable to cache arguments and return values."""
+                value: Any = self.get(func.__name__, empty, tag)
+                if value is empty:
+                    value: Any = func(*args, **kwargs)
+                    self.set(func.__name__, value, timeout, tag)
+                return value
+            return wrapper
+
+        return decorator
 
     def clear(self) -> bool:
         """ Empty all caches. """
