@@ -7,7 +7,7 @@ import doctest
 from collections import OrderedDict
 from threading import Lock
 from time import time as current
-from typing import Dict, Any, Type, Union, Optional
+from typing import Dict, Any, Type, Union, Optional, NoReturn
 
 from cache3 import BaseCache
 from cache3.utils import NullContext
@@ -49,7 +49,8 @@ class SimpleCache(BaseCache):
         self._expire_info: Dict[str, Any] = _expire_info.setdefault(self._name, {})
         self._lock: LK = _locks.setdefault(self._name, self.LOCK())
 
-    def set(self, key: Any, value: Any, timeout: Number = DEFAULT_TIMEOUT, tag: TG = DEFAULT_TAG) -> bool:
+    def set(self, key: Any, value: Any, timeout: Number = DEFAULT_TIMEOUT,
+            tag: TG = DEFAULT_TAG) -> bool:
         key: str = self.make_and_validate_key(key, tag=tag)
         value: Any = self.serialize(value)
         with self._lock:
@@ -66,7 +67,8 @@ class SimpleCache(BaseCache):
             self._cache.move_to_end(key, last=False)
         return self.deserialize(value)
 
-    def ex_set(self, key: str, value: Any, timeout: float = DEFAULT_TIMEOUT, tag: Optional[str] = DEFAULT_TAG) -> bool:
+    def ex_set(self, key: str, value: Any, timeout: float = DEFAULT_TIMEOUT,
+               tag: Optional[str] = DEFAULT_TAG) -> bool:
 
         key: str = self.make_and_validate_key(key, tag=tag)
         value: Any = self.serialize(value)
@@ -134,7 +136,7 @@ class SimpleCache(BaseCache):
         exp: float = self._expire_info.get(key, -1.)
         return exp is not None and exp <= current()
 
-    def lru_evict(self):
+    def lru_evict(self) -> NoReturn:
         if self._cull_size == 0:
             self._cache.clear()
             self._expire_info.clear()
