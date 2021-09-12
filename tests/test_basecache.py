@@ -7,7 +7,7 @@ from typing import *
 
 import pytest
 
-from cache3.cache import BaseCache
+from cache3.memory import BaseCache
 
 
 def test_invalid_key() -> NoReturn:
