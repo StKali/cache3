@@ -5,6 +5,9 @@
 from contextlib import AbstractContextManager
 from typing import *
 
+# Compatible with multiple types.
+empty: Any = object()
+
 
 class NullContext(AbstractContextManager):
     """ Context manager that does no additional processing.

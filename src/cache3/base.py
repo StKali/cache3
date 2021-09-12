@@ -7,8 +7,7 @@ import warnings
 from time import time as current
 from typing import Any, Type, Optional, Union, Dict, Tuple, Callable, NoReturn, List
 
-from pyparsing import empty
-
+from cache3.utils import empty
 from cache3.setting import (
     DEFAULT_TAG, DEFAULT_TIMEOUT, MAX_TIMEOUT, MIN_TIMEOUT, MAX_KEY_LENGTH,
     DEFAULT_NAME, DEFAULT_MAX_SIZE, DEFAULT_EVICT, DEFAULT_CULL_SIZE
