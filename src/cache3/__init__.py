@@ -5,6 +5,7 @@
 
 from typing import List
 from cache3.base import BaseCache
+from cache3.disk import Cache as DiskCache, SQLite
 from cache3.memory import SimpleCache, SafeCache
 from cache3.setting import PROGRAM, VERSION
 
@@ -14,6 +15,7 @@ __version__: str = '.'.join(map(str, VERSION))
 __doc__: str = "A safe and light Python cache library."
 
 __all__: List[str] = [
-    'BaseCache', 'SimpleCache', 'SafeCache'
+    'BaseCache', 'SimpleCache',
+    'SafeCache', 'DiskCache', 'SQLite'
 ]
 
