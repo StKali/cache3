@@ -328,6 +328,23 @@ class Cache(BaseCache):
 
         return value
 
+    def lru_evict(self) -> NoReturn:
+
+        # Get current k-v pair count.
+        (count, ) = self.sqlite(
+            'SELECT `count` FROM `info` '
+            'WHERE `rowid` = 1'
+        ).fetchone()
+
+        # reduce k-v pair to follow count limit
+        if count > self._max_size:
+            self.sqlite(
+                'DELETE FROM `cache` WHERE `rowid` IN ('
+                'SELECT `rowid` FROM `cache` '
+                'ORDER BY `access` LIMIT ?)',
+                (self._cull_size, )
+            )
+
     def clear(self):
         """ FIXME :: NoQA """
         try:
