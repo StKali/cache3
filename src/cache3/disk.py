@@ -10,7 +10,7 @@ from time import time as current
 from typing import NoReturn, Type, Union, Optional, Dict, Any, List, Tuple
 
 from cache3 import BaseCache
-from setting import DEFAULT_NAME, DEFAULT_TIMEOUT, DEFAULT_MAX_SIZE, DEFAULT_TAG
+from cache3.setting import DEFAULT_NAME, DEFAULT_TIMEOUT, DEFAULT_MAX_SIZE, DEFAULT_TAG
 
 Number: Type = Union[int, float]
 TG: Type = Optional[str]
