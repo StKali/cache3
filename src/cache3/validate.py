@@ -67,3 +67,14 @@ class StringValidate(Validator):
                 f'Expected {self.predicate} to be true for {value!r}'
             )
 
+
+class EnumerateValidate(Validator):
+
+    def __init__(self, *options: str) -> None:
+        self.options = set(options)
+
+    def validate(self, value: Any) -> NoReturn:
+
+        if value not in self.options:
+            raise ValueError(f'Expected {value!r} to be one of {self.options!r}')
+

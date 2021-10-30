@@ -29,9 +29,9 @@ MIN_KEY_LENGTH: int = 1
 MAX_TIMEOUT: int = 365 * 24 * 60 * 60
 MIN_TIMEOUT: int = 0
 
-EVICT: Type = str
-EVICT_LRU: EVICT = 'lru_evict'
-EVICT_FIFO: EVICT = 'fifo_evict'
-EVICT_LFU: EVICT = 'lfu_evict'
 
-DEFAULT_EVICT: EVICT = EVICT_LRU
+EVICT_LRU: str = 'lru_evict'
+EVICT_FIFO: str = 'fifo_evict'
+EVICT_LFU: str = 'lfu_evict'
+
+DEFAULT_EVICT: str = EVICT_LRU

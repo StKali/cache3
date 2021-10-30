@@ -156,7 +156,7 @@ class SimpleCache(BaseCache):
 
     def _set(self, key: str, value: Any, timeout=DEFAULT_TIMEOUT) -> bool:
         if self._timeout and len(self._cache) >= self._max_size:
-            self.evict()
+            self.evictor()
         self._cache[key] = value
         self._cache.move_to_end(key, last=False)
         self._expire_info[key] = self.get_backend_timeout(timeout)

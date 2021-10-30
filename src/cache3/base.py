@@ -10,9 +10,10 @@ from typing import Any, Type, Optional, Union, Dict, Tuple, Callable, NoReturn, 
 from cache3.utils import empty
 from cache3.setting import (
     DEFAULT_TAG, DEFAULT_TIMEOUT, MAX_TIMEOUT, MIN_TIMEOUT, MAX_KEY_LENGTH,
-    DEFAULT_NAME, DEFAULT_MAX_SIZE, DEFAULT_EVICT, DEFAULT_CULL_SIZE
+    DEFAULT_NAME, DEFAULT_MAX_SIZE, DEFAULT_EVICT, DEFAULT_CULL_SIZE, EVICT_LFU,
+    EVICT_FIFO, EVICT_LRU
 )
-from cache3.validate import NumberValidate, StringValidate
+from cache3.validate import NumberValidate, StringValidate, EnumerateValidate
 
 Number: Type = Union[int, float]
 TG: Type = Optional[str]
@@ -34,6 +35,8 @@ class BaseCache:
     name: str = StringValidate(minsize=1, maxsize=MAX_KEY_LENGTH)
     timeout: Number = NumberValidate(minvalue=MIN_TIMEOUT, maxvalue=MAX_TIMEOUT)
     max_size: int = NumberValidate(minvalue=0)
+    evict: str = EnumerateValidate(EVICT_LRU, EVICT_FIFO, EVICT_LFU)
+    cull_size: str = NumberValidate(minvalue=0)
 
     def __init__(
             self,
@@ -45,14 +48,16 @@ class BaseCache:
         self.name: str = name
         self.timeout: Number = timeout
         self.max_size: int = max_size
+        self.evict: str = DEFAULT_EVICT
+        self.cull_size: int = 10
         self._kwargs: Dict[str, Any] = kwargs
 
     def config(self, **kwargs) -> NoReturn:
         """ The cache is configured in fine grain By default,
         Configure the cache eviction policy.
         """
-        self._evict = kwargs.get('evict', DEFAULT_EVICT)
-        self._cull_size = kwargs.get('cull_size', DEFAULT_CULL_SIZE)
+        self.evict = kwargs.get('evict', DEFAULT_EVICT)
+        self.cull_size = kwargs.get('cull_size', DEFAULT_CULL_SIZE)
 
     def set(self, key: str, value: Any, timeout: Number = DEFAULT_TIMEOUT,
             tag: TG = DEFAULT_TAG) -> bool:
@@ -258,7 +263,7 @@ class BaseCache:
         )
 
     @property
-    def evict(self) -> Callable:
+    def evictor(self) -> Callable:
         """ Implementation of the cache eviction policy.
 
         The ``_evict`` parameter is used to determine the eviction policy.
@@ -273,8 +278,8 @@ class BaseCache:
         warning otherwise.
         """
 
-        evict: Callable = getattr(self, self._evict, empty)
-        if evict is empty:
+        evictor: Callable = getattr(self, self._evict, empty)
+        if evictor is empty:
             warnings.warn(
                 "Not found '%s' evict method, it will cause the"
                 "cache to grow without limit." % self._evict,
@@ -283,14 +288,14 @@ class BaseCache:
             # Just to return a callable object ~.
             return object
 
-        if not callable(evict):
+        if not callable(evictor):
             warnings.warn(
-                "Invalid evict '%s', It must a callable object." % evict,
+                "Invalid evict '%s', It must a callable object." % evictor,
                 RuntimeWarning
             )
             return object
 
-        return evict
+        return evictor
 
     def __repr__(self) -> str:
         return "<%s '%s' timeout:%.2f>" % (
