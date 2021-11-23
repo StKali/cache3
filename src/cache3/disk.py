@@ -412,6 +412,20 @@ class Cache(BaseCache):
             'WHERE `rowid` = 1'
         ).rowcount == 1
 
+    def __getstate__(self) -> Dict[str, Any]:
+        """ When a variable is shared by multiple processes,
+        the context of the object is fork copied, python uses
+        ``pickle`` (ForkingPickler(file, protocol).dump(obj)
+        to recursively serialize the object, but when the SQLite
+        connection is in the object property or sub-property,
+        the object cannot be sequenced or shared. Therefore, the
+        connection object needs to be deleted before the sequence
+        word and the connection needs to be rebuilt after fork.
+        """
+        pick_meta = vars(self).copy()
+        pick_meta['_sqlite'] = None
+        return pick_meta
+
     __delitem__ = delete
     __getitem__ = get
     __setitem__ = set
