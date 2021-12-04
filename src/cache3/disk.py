@@ -3,17 +3,21 @@
 # DATE: 2021/9/15
 # Author: clarkmonkey@163.com
 
-import warnings
+import os
+from contextlib import contextmanager
+from multiprocessing import Process
 from pathlib import Path
 from sqlite3.dbapi2 import Connection, Cursor, connect, OperationalError
-from time import time as current
-from typing import NoReturn, Type, Union, Optional, Dict, Any, List, Tuple
+from threading import Lock, local, get_ident
+from time import time as current, sleep
+from typing import NoReturn, Type, Union, Optional, Dict, Any, List, Tuple, Callable
 
 from cache3 import BaseCache
 from cache3.setting import (
     DEFAULT_NAME, DEFAULT_TIMEOUT, DEFAULT_MAX_SIZE, DEFAULT_TAG,
     DEFAULT_SQLITE_TIMEOUT
 )
+from cache3.validate import DirectoryValidate
 
 Number: Type = Union[int, float]
 TG: Type = Optional[str]
@@ -25,12 +29,12 @@ PRAGMAS: Dict[str, Union[str, int]] = {
     'auto_vacuum': 1,
     'cache_size': 1 << 13,  # 8, 192 pages
     'journal_mode': 'wal',
-    'threads': 4,  # SQLite work threads count
+    # 'threads': 4,  # SQLite work threads count
     'temp_store': 2,  # DEFAULT: 0 | FILE: 1 | MEMORY: 2
     'mmap_size': 1 << 27,  # 128MB
     'synchronous': 1,
-    'locking_mode': 'EXCLUSIVE',
 }
+
 DEFAULT_STORE: Path = Path('~/.pycache3')
 TABLES = {
     'cache': {
@@ -62,159 +66,152 @@ TABLES = {
     }
 }
 
-_sqlite_map: dict = dict()
+class SessionDescriptor:
 
-#
-# class SingletonMixin:
-#
-#     __singleton_attr__ = '__singleton__'
-#
-#     def __new__(cls) -> 'SessionManager':
-#         if getattr(cls, cls.__singleton_attr__, empty) is empty:
-#             instance = super(SingletonMixin, cls).__new__(cls)
-#             setattr(cls, cls.__singleton_attr__, instance)
-#         return getattr(cls, cls.__singleton_attr__)
+    def __set_name__(self, owner: object, name: str) -> NoReturn:
+        self.private_name = '_' + name
+        self.lock: Lock = Lock()
+        self.context: local = local()
 
+    def __set__(self, instance: Any, value: Connection) -> bool:
 
-class SQLite:
-    """ SQLite backend class """
-
-    def __init__(
-            self,
-            database: str,
-            pragma_script: Optional[str] = None,
-            **kwargs
-    ) -> None:
-        self._database: str = database
-        self._is_in_memory: bool = database in [':memory:', 'mode=memory']
-        self.pragma_script: str = pragma_script
-        self._kwargs: Dict[str, Any] = kwargs
-        self._session: Optional[Connection] = None
-
-        if kwargs.setdefault('check_same_thread', False):
-            warnings.warn(
-                'Ths `check_same_thread` option was provided and set to True.',
-                RuntimeWarning
+        if not isinstance(value, Connection):
+            raise ValueError(
+                f'Expected {value!r} to be an sqlite3.Connection.'
             )
+        with self.lock:
+            setattr(instance, self.private_name, value)
+        return True
 
-        # https://docs.python.org/3/library/sqlite3.html#sqlite3.Connection.isolation_level
-        if kwargs.setdefault('isolation_level', None) is not None:
-            warnings.warn(
-                'SQLite python implements an automatic start of '
-                'a transaction, but does not automatically commit',
-                UserWarning
+    def __get__(self, instance, owner) -> Optional[Connection]:
+
+        local_pid: int = getattr(self.context, 'pid', None)
+        pid: int = os.getpid()
+
+        if local_pid != pid:
+            self._close()
+            self.context.pid = pid
+
+        session = getattr(self.context, 'session', None)
+
+        if session is None:
+            configure: Dict[str, Any] = getattr(instance, 'configure')
+            pragmas: Dict[str, Any] = getattr(instance, 'pragmas')
+            session = self.context.session = connect(
+                **configure
             )
+            self.config_session(session, pragmas)
+        return session
 
-    def _config_session(self, session: Connection) -> NoReturn:
-        """ Set the properties of the sqlite connections. """
-        if self.pragma_script:
-            session.executescript(self.pragma_script)
+    def _close(self) -> bool:
 
-    @property
-    def session(self) -> Connection:
-        if self._session is None:
-            session: Connection = connect(self._database, **self._kwargs)
-            self._config_session(session)
-            self._session = session
-        return self._session
-
-    def close(self, force: bool = False) -> bool:
-        """ if SQlite database is in memory, closing the connection desctroys the
-        database. To prevent accidental data loss, such as : ignore close requests,
-        ignore release lock, etc.
-        """
-        if self._session is None:
+        session: Connection = getattr(self.context, 'session', None)
+        if session is None:
             return True
+        session.close()
+        try:
+            delattr(self.context, 'session')
+        except AttributeError:
+            pass
+        return True
 
-        elif not self._is_in_memory or force:
-            self._session. close()
-            self._session = None
-            return True
+    def config_session(self, session: Connection, pragmas: Dict[str, Any]):
 
-        warnings.warn(
-            'Cache build in memory, if closing the connection, '
-            'will destroys the database . if you want to do that,'
-            'please close(True) or destroy().',
-            RuntimeWarning
+        start = current()
+        script: str = ';'.join(
+            'PRAGMA %s = %s' % item for
+            item in pragmas.items()
         )
-        return False
 
-    def destroy(self) -> bool:
-        return self.close(True)
+        while True:
+            try:
+                session.executescript(script)
+                break
+            except OperationalError as exc:
+                print(exc)
+                if str(exc) != 'database is locked':
+                    raise
+                diff = current() - start
+                if diff > 60:
+                    raise
+                sleep(0.001)
 
-    def execute(self, *args, **kwargs) -> Cursor:
-        return self.session.execute(*args, **kwargs)
-
-    # @contextmanager
-    # def transact(self) -> Callable[[str, Any], Cursor]:
-    #     """
-    #
-    #     docs: https://docs.python.org/3/library/sqlite3.html
-    #
-    #         SQLite Connection objects can be used as context managers that
-    #     automatically commit or rollback transactions. In the event of an
-    #     exception, the transaction is roll back; otherwise , the transaction
-    #     is committed;
-    #     """
-    #     yield self.session
-
-    def __getattr__(self, item: str) -> Any:
-        return getattr(self.session, item)
-
-    def __repr__(self) -> str:
-        return "<%s db: %s> " % (self.__class__.__name__, self._database)
-
-    __call__ = execute
+    def __delete__(self, instance) -> bool:
+        return self._close()
 
 
-def sqlite_factory(directory: Path, filename: str, **kwargs) -> SQLite:
+class DiskCache(BaseCache):
+    session: SessionDescriptor = SessionDescriptor()
+    directory: DirectoryValidate = DirectoryValidate()
 
-    pragmas: Dict[str, Any] = PRAGMAS
-    pragmas.update(
-        kwargs.pop('pragmas', dict())
-    )
-    pragma_script: str = ';'.join('PRAGMA %s=%s' % item for item in pragmas.items())
+    def __init__(self, directory=DEFAULT_STORE, *args, **kwargs):
+        super(DiskCache, self).__init__(*args, **kwargs)
+        self.directory: Path = directory
+        self._txn_id = None
+        self.args = args
+        self.kwargs = kwargs
 
-    if not directory.exists():
-        directory.mkdir(0o755)
+        self.configure: Dict[str, Any] = {
+            'database': str(self.directory / self._name),
+            'isolation_level': None,
+            'timeout': 60,
+        }
+        self.configure.update(
+            kwargs.get('configure', dict())
+        )
+        self.pragmas: Dict[str, Any] = PRAGMAS
+        self.pragmas.update(
+            kwargs.get('pragmas', dict())
+        )
 
-    # Lower python interpreter unsupported ``Path`` object.
-    db: str = str(directory / filename)
-    sqlite: SQLite = _sqlite_map.get(db)
-
-    if sqlite is None:
-        # klass = type('%sSQLite' % filename.title(), (SQLite,), {})
-        sqlite = SQLite(db, pragma_script, **kwargs)
-        _sqlite_map[db] = sqlite
-    return sqlite
-
-
-class Cache(BaseCache):
-
-    def __init__(
-            self,
-            name: Optional[str] = DEFAULT_NAME,
-            timeout: float = DEFAULT_TIMEOUT,
-            max_size: int = DEFAULT_MAX_SIZE,
-            directory: str = DEFAULT_STORE,
-            **kwargs
-    ):
-        super(Cache, self).__init__(name, timeout, max_size)
-        self.path: Path = Path(directory or DEFAULT_STORE).expanduser().resolve()
-        self._kwargs = kwargs
-        self._sqlite: Optional[SQLite] = None
-        # self.sqlite: SQLite = sqlite_factory(self.path, self._name, timeout=self._timeout, **kwargs)
-        # Create cache tables and fill base data.
-        self._make_cache_dependencies()
+        self.sqlite(
+            'CREATE TABLE IF NOT EXISTS `cache`('
+            '`key` TEXT NOT NULL,'
+            '`store` REAL NOT NULL,'
+            '`expire` REAL NOT NULL,'
+            '`access` REAL NOT NULL,'
+            '`access_count` INTEGER DEFAULT 0,'
+            '`tag` BLOB,'  # Don't set ``NOT NULL``
+            '`value` BLOB)'
+        )
 
     @property
-    def sqlite(self) -> SQLite:
-        if self._sqlite is None:
-            self._sqlite = sqlite_factory(self.path, self._name, timeout=DEFAULT_SQLITE_TIMEOUT, **self._kwargs)
-        return self._sqlite
+    def sqlite(self):
+        return self.session.execute
 
-    def _make_sqlite(self) -> SQLite:
-        return sqlite_factory(self.path, self._name, timeout=self._timeout, **self._kwargs)
+    @contextmanager
+    def _transact(self, retry=False):
+        sql = self.sqlite
+        tid = get_ident()
+        txn_id = self._txn_id
+
+        if tid == txn_id:
+            begin = False
+        else:
+            while True:
+                try:
+                    sql('BEGIN IMMEDIATE')
+                    begin = True
+                    self._txn_id = tid
+                    break
+                except OperationalError:
+                    if retry:
+                        continue
+                    raise TimeoutError from None
+
+        try:
+            yield sql
+        except BaseException:
+            if begin:
+                assert self._txn_id == tid
+                self._txn_id = None
+                sql('ROLLBACK')
+            raise
+        else:
+            if begin:
+                assert self._txn_id == tid
+                self._txn_id = None
+                sql('COMMIT')
 
     def set(self, key: str, value: Any, timeout: Number = DEFAULT_TIMEOUT,
             tag: TG = DEFAULT_TAG) -> bool:
@@ -223,38 +220,41 @@ class Cache(BaseCache):
         value: Any = self.serialize(value)
         now: Time = current()
         expire: Optional[Number] = self.get_backend_timeout(timeout)
-
-        success: bool = self.sqlite(
-            'INSERT OR REPLACE INTO `cache`('
-            '`key`, `store`, `expire`, `access`, `access_count`, `tag`, `value`'
-            ') VALUES (?, ?, ?, ?, ?, ?, ?)',
-            (key, now, expire, now, 0, tag, value)
-        ).rowcount == 1
-        if success:
-            self._add_count()
-            self.evictor()
+        with self._transact() as sqlite:
+            success: bool = sqlite(
+                'INSERT OR REPLACE INTO `cache`('
+                '`key`, `store`, `expire`, `access`, `access_count`, `tag`, `value`'
+                ') VALUES (?, ?, ?, ?, ?, ?, ?)',
+                (key, now, expire, now, 0, tag, value)
+            ).rowcount == 1
+            if success:
+                self._add_count()
+                self.evictor()
         return success
 
-    def ex_set(self, key: str, value: Any, timeout: float = DEFAULT_TIMEOUT,
-               tag: Optional[str] = DEFAULT_TAG) -> bool:
+    def lru_evict(self) -> NoReturn:
 
-        if self.has_key(key, tag):
-            return False
+        # Get current k-v pair count.
+        (count, ) = self.sqlite(
+            'SELECT `count` FROM `info` '
+            'WHERE `rowid` = 1'
+        ).fetchone()
 
-        key: str = self.make_key(key, tag)
-        now: Time = current()
-        expire: float = self.get_backend_timeout(timeout)
+        # reduce k-v pair to follow count limit
+        if count > self._max_size:
+            with self._transact() as sqlite:
+                sqlite(
+                    'DELETE FROM `cache` WHERE `rowid` IN ('
+                    'SELECT `rowid` FROM `cache` '
+                    'ORDER BY `access` LIMIT ?)',
+                    (self._cull_size, )
+                )
 
-        success: bool = self.sqlite(
-            'INSERT OR REPLACE INTO `cache`( '
-            '`key`, `store`, `expire`, `access`, `access_count`, `tag`, `value`'
-            ') VALUES (?, ?, ?, ?, ?, ?, ?) ',
-            (key, now, expire, now, 0, tag, value)
-        ).rowcount == 1
-        if success:
-            self._add_count()
-
-        return success
+    def _add_count(self) -> bool:
+        return self.sqlite(
+                'UPDATE `info` SET `count` = `count` + 1 '
+                'WHERE `rowid` = 1'
+            ).rowcount == 1
 
     def get(self, key: str, default: Any = None, tag: TG = DEFAULT_TAG) -> Any:
         key: str = self.make_and_validate_key(key, tag)
@@ -274,27 +274,47 @@ class Cache(BaseCache):
             return default
         return self.deserialize(query_value)
 
+    def ex_set(self, key: str, value: Any, timeout: float = DEFAULT_TIMEOUT,
+               tag: Optional[str] = DEFAULT_TAG) -> bool:
+
+        if self.has_key(key, tag):
+            return False
+
+        key: str = self.make_key(key, tag)
+        now: Time = current()
+        expire: float = self.get_backend_timeout(timeout)
+        with self._transact() as sqlite:
+            success: bool = sqlite(
+                'INSERT OR REPLACE INTO `cache`( '
+                '`key`, `store`, `expire`, `access`, `access_count`, `tag`, `value`'
+                ') VALUES (?, ?, ?, ?, ?, ?, ?) ',
+                (key, now, expire, now, 0, tag, value)
+            ).rowcount == 1
+            if success:
+                self._add_count()
+        return success
+
     def delete(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
         key: str = self.make_and_validate_key(key, tag)
-
-        success: bool = self.sqlite(
-            'DELETE FROM `cache` '
-            'WHERE `key` = ? AND `tag` = ?',
-            (key, tag)
-        ).rowcount == 1
-        if success:
-            self._sub_count()
+        with self._transact() as sqlite:
+            success: bool = sqlite(
+                'DELETE FROM `cache` '
+                'WHERE `key` = ? AND `tag` = ?',
+                (key, tag)
+            ).rowcount == 1
+            if success:
+                self._sub_count()
         return success
 
     def touch(self, key: str, timeout: Number, tag: TG = DEFAULT_TAG) -> bool:
         key: str = self.make_and_validate_key(key, tag)
         new_expire: Number = self.get_backend_timeout(timeout)
-
-        return self.sqlite(
-            'UPDATE `cache` SET `expire` = ? '
-            'WHERE `key` = ? AND `tag` = ? AND `expire` > ?',
-            (new_expire, key, tag, current())
-        ).rowcount == 1
+        with self._transact() as sqlite:
+            return sqlite(
+                'UPDATE `cache` SET `expire` = ? '
+                'WHERE `key` = ? AND `tag` = ? AND `expire` > ?',
+                (new_expire, key, tag, current())
+            ).rowcount == 1
 
     def inspect(self, key: str, tag: TG = DEFAULT_TAG) -> Optional[Dict[str, Any]]:
         key: str = self.make_and_validate_key(key, tag)
@@ -313,12 +333,12 @@ class Cache(BaseCache):
     def incr(self, key: str, delta: int = 1, tag: TG = DEFAULT_TAG) -> Number:
 
         serial_key: str = self.make_and_validate_key(key, tag)
-
-        success: bool = self.sqlite(
-            'UPDATE `cache` SET `value`=`value` + %s '
-            'WHERE `key` = ? AND `tag` = ? AND `expire` > ?' % delta,
-            (serial_key, tag, current())
-        ).rowcount == 1
+        with self._transact() as sqlite:
+            success: bool = sqlite(
+                'UPDATE `cache` SET `value`=`value` + %s '
+                'WHERE `key` = ? AND `tag` = ? AND `expire` > ?' % delta,
+                (serial_key, tag, current())
+            ).rowcount == 1
 
         if not success:
             raise ValueError("Key '%s' not found" % key)
@@ -331,32 +351,15 @@ class Cache(BaseCache):
 
         return value
 
-    def lru_evict(self) -> NoReturn:
-
-        # Get current k-v pair count.
-        (count, ) = self.sqlite(
-            'SELECT `count` FROM `info` '
-            'WHERE `rowid` = 1'
-        ).fetchone()
-
-        # reduce k-v pair to follow count limit
-        if count > self._max_size:
-            self.sqlite(
-                'DELETE FROM `cache` WHERE `rowid` IN ('
-                'SELECT `rowid` FROM `cache` '
-                'ORDER BY `access` LIMIT ?)',
-                (self._cull_size, )
-            )
-
     def clear(self):
         """ FIXME :: NoQA """
         try:
-            self.sqlite.executescript(
+            self.session.executescript(
                 'DELETE FROM `sqlite_sequence` WHERE `name` = cache;'
                 'UPDATE `info` SET `size` = 0, `count` = 0 WHERE rowid = 1'
             )
         except OperationalError:
-            self.sqlite.executescript(
+            self.session.executescript(
                 'DELETE FROM `cache`;'
                 'UPDATE `info` SET `count` = 0 WHERE rowid = 1'
             )
@@ -398,34 +401,36 @@ class Cache(BaseCache):
                 'INSERT INTO `info`(`count`) VALUES (0)'
             )
 
-    def _add_count(self) -> bool:
-
-        return self.sqlite(
-            'UPDATE `info` SET `count` = `count` + 1 '
-            'WHERE `rowid` = 1'
-        ).rowcount == 1
-
     def _sub_count(self) -> bool:
-
-        return self.sqlite(
-            'UPDATE `info` SET `count` = `count` - 1 '
-            'WHERE `rowid` = 1'
-        ).rowcount == 1
-
-    def __getstate__(self) -> Dict[str, Any]:
-        """ When a variable is shared by multiple processes,
-        the context of the object is fork copied, python uses
-        ``pickle`` (ForkingPickler(file, protocol).dump(obj)
-        to recursively serialize the object, but when the SQLite
-        connection is in the object property or sub-property,
-        the object cannot be sequenced or shared. Therefore, the
-        connection object needs to be deleted before the sequence
-        word and the connection needs to be rebuilt after fork.
-        """
-        pick_meta = vars(self).copy()
-        pick_meta['_sqlite'] = None
-        return pick_meta
+        with self._transact() as sqlite:
+            return sqlite(
+                'UPDATE `info` SET `count` = `count` - 1 '
+                'WHERE `rowid` = 1'
+            ).rowcount == 1
 
     __delitem__ = delete
     __getitem__ = get
     __setitem__ = set
+
+
+def mark(cache=None):
+    if cache is None:
+        cache = DiskCache()
+    for i in range(1000):
+        print(f'set index %d' % i)
+        cache.set('%d' % i, i)
+
+
+if __name__ == '__main__':
+    # from diskcache import Cache
+    # cache = Cache()
+    s = current()
+    # cache = Cache()
+    ps = [Process(target=mark) for _ in range(10)]
+    [p.start() for p in ps]
+    [p.join() for p in ps]
+    print(current() - s)
+    cache = DiskCache()
+    ps = [Process(target=mark, args=(cache,)) for _ in range(10)]
+    [p.start() for p in ps]
+    [p.join() for p in ps]

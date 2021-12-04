@@ -155,8 +155,6 @@ class GeneralCase:
 
     def teardown_class(self):
         self.cache.clear()
-        if isinstance(self.cache, DiskCache):
-            self.cache.sqlite.destroy()
 
 
 class TestSimpleCache(GeneralCase):

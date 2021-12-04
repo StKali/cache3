@@ -6,6 +6,7 @@
 from typing import *
 
 from abc import ABC, abstractmethod
+from pathlib import Path
 
 
 class Validator(ABC):
@@ -17,11 +18,12 @@ class Validator(ABC):
         return getattr(obj, self.private_name)
 
     def __set__(self, obj: object, value: Any):
-        self.validate(value)
+        validate_value: Any = self.validate(value)
+        value = value if validate_value is None else validate_value
         setattr(obj, self.private_name, value)
 
     @abstractmethod
-    def validate(self, value: Any) -> NoReturn:
+    def validate(self, value: Any) -> Any:
         """ Validate method. """
 
 
@@ -78,3 +80,16 @@ class EnumerateValidate(Validator):
         if value not in self.options:
             raise ValueError(f'Expected {value!r} to be one of {self.options!r}')
 
+
+class DirectoryValidate(Validator):
+
+    def validate(self, directory: Any) -> Any:
+        if not isinstance(directory, (str, Path)):
+            raise ValueError(f'Expected {directory!r} to be a like-path object')
+
+        path: Path = Path(directory).expanduser().absolute()
+        if not path.exists():
+            path.mkdir()
+            return path
+
+        return path
