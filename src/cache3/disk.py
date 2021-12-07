@@ -31,7 +31,7 @@ PRAGMAS: Dict[str, Union[str, int]] = {
     'journal_mode': 'wal',
     # 'threads': 4,  # SQLite work threads count
     'temp_store': 2,  # DEFAULT: 0 | FILE: 1 | MEMORY: 2
-    'mmap_size': 1 << 27,  # 128MB
+    'mmap_size': 1 << 26,  # 64MB
     'synchronous': 1,
 }
 
