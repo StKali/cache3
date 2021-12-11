@@ -3,7 +3,7 @@
 # DATE: 2021/8/12
 # Author: clarkmonkey@163.com
 
-from typing import *
+from typing import NoReturn, Optional
 from time import time as current
 
 from cache3 import SimpleCache

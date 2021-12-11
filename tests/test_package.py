@@ -4,7 +4,7 @@
 # Author: clarkmonkey@163.com
 
 import pytest
-from typing import *
+from typing import NoReturn
 
 
 def test_package() -> NoReturn:

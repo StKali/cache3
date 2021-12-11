@@ -3,7 +3,7 @@
 # DATE: 2021/7/24
 # Author: clarkmonkey@163.com
 
-from typing import Tuple, Type
+from typing import Tuple
 
 ####################
 #    INFORMATION

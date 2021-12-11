@@ -3,9 +3,6 @@
 # DATE: 2021/11/1
 # Author: clarkmonkey@163.com
 
-from typing import *
-
-
 import random
 from string import printable
 from typing import Generator
