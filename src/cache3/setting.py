@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # DATE: 2021/7/24
 # Author: clarkmonkey@163.com
-
+from pathlib import Path
 from typing import Tuple
 
 ####################
@@ -20,6 +20,7 @@ DEFAULT_MAX_SIZE: int = 1 << 24  # 16M
 DEFAULT_CULL_SIZE: int = 10  # 10 elements
 DEFAULT_TAG: str = "default"
 DEFAULT_NAME: str = 'default.cache3'
+DEFAULT_STORE: Path = Path('~/.pycache3')
 
 ####################
 #    LIMIT SETTING

@@ -3,9 +3,9 @@
 # DATE: 2021/9/15
 # Author: clarkmonkey@163.com
 
-import os
 from contextlib import contextmanager
 from multiprocessing import Process
+from os import getpid
 from pathlib import Path
 from sqlite3.dbapi2 import Connection, Cursor, connect, OperationalError
 from threading import Lock, local, get_ident
@@ -14,7 +14,7 @@ from typing import NoReturn, Type, Union, Optional, Dict, Any, List, Tuple, Call
 
 from cache3 import BaseCache
 from cache3.setting import (
-    DEFAULT_NAME, DEFAULT_TIMEOUT, DEFAULT_MAX_SIZE, DEFAULT_TAG,
+    DEFAULT_TIMEOUT, DEFAULT_TAG, DEFAULT_STORE,
     DEFAULT_SQLITE_TIMEOUT
 )
 from cache3.validate import DirectoryValidate
@@ -35,7 +35,6 @@ PRAGMAS: Dict[str, Union[str, int]] = {
     'synchronous': 1,
 }
 
-DEFAULT_STORE: Path = Path('~/.pycache3')
 TABLES = {
     'cache': {
         'schema': (
@@ -66,10 +65,11 @@ TABLES = {
     }
 }
 
+
 class SessionDescriptor:
 
     def __set_name__(self, owner: object, name: str) -> NoReturn:
-        self.private_name = '_' + name
+        self.private_name: str = '_' + name
         self.lock: Lock = Lock()
         self.context: local = local()
 
@@ -86,13 +86,13 @@ class SessionDescriptor:
     def __get__(self, instance, owner) -> Optional[Connection]:
 
         local_pid: int = getattr(self.context, 'pid', None)
-        pid: int = os.getpid()
+        pid: int = getpid()
 
         if local_pid != pid:
             self._close()
             self.context.pid = pid
 
-        session = getattr(self.context, 'session', None)
+        session: Connection = getattr(self.context, 'session', None)
 
         if session is None:
             configure: Dict[str, Any] = getattr(instance, 'configure')
@@ -115,9 +115,10 @@ class SessionDescriptor:
             pass
         return True
 
-    def config_session(self, session: Connection, pragmas: Dict[str, Any]):
+    @staticmethod
+    def config_session(session: Connection, pragmas: Dict[str, Any]):
 
-        start = current()
+        start: Time = current()
         script: str = ';'.join(
             'PRAGMA %s = %s' % item for
             item in pragmas.items()
@@ -128,7 +129,6 @@ class SessionDescriptor:
                 session.executescript(script)
                 break
             except OperationalError as exc:
-                print(exc)
                 if str(exc) != 'database is locked':
                     raise
                 diff = current() - start
@@ -136,11 +136,12 @@ class SessionDescriptor:
                     raise
                 sleep(0.001)
 
-    def __delete__(self, instance) -> bool:
+    def __delete__(self, instance: object) -> bool:
         return self._close()
 
 
 class DiskCache(BaseCache):
+
     session: SessionDescriptor = SessionDescriptor()
     directory: DirectoryValidate = DirectoryValidate()
 
@@ -154,7 +155,7 @@ class DiskCache(BaseCache):
         self.configure: Dict[str, Any] = {
             'database': str(self.directory / self._name),
             'isolation_level': None,
-            'timeout': 60,
+            'timeout': DEFAULT_SQLITE_TIMEOUT,
         }
         self.configure.update(
             kwargs.get('configure', dict())
@@ -163,17 +164,7 @@ class DiskCache(BaseCache):
         self.pragmas.update(
             kwargs.get('pragmas', dict())
         )
-
-        self.sqlite(
-            'CREATE TABLE IF NOT EXISTS `cache`('
-            '`key` TEXT NOT NULL,'
-            '`store` REAL NOT NULL,'
-            '`expire` REAL NOT NULL,'
-            '`access` REAL NOT NULL,'
-            '`access_count` INTEGER DEFAULT 0,'
-            '`tag` BLOB,'  # Don't set ``NOT NULL``
-            '`value` BLOB)'
-        )
+        self._make_cache_dependencies()
 
     @property
     def sqlite(self):
@@ -257,6 +248,7 @@ class DiskCache(BaseCache):
             ).rowcount == 1
 
     def get(self, key: str, default: Any = None, tag: TG = DEFAULT_TAG) -> Any:
+
         key: str = self.make_and_validate_key(key, tag)
         row: Tuple[Number, Any] = self.sqlite(
             'SELECT `expire`, `value` '
@@ -295,6 +287,7 @@ class DiskCache(BaseCache):
         return success
 
     def delete(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
+
         key: str = self.make_and_validate_key(key, tag)
         with self._transact() as sqlite:
             success: bool = sqlite(
@@ -307,6 +300,7 @@ class DiskCache(BaseCache):
         return success
 
     def touch(self, key: str, timeout: Number, tag: TG = DEFAULT_TAG) -> bool:
+
         key: str = self.make_and_validate_key(key, tag)
         new_expire: Number = self.get_backend_timeout(timeout)
         with self._transact() as sqlite:
@@ -317,6 +311,7 @@ class DiskCache(BaseCache):
             ).rowcount == 1
 
     def inspect(self, key: str, tag: TG = DEFAULT_TAG) -> Optional[Dict[str, Any]]:
+
         key: str = self.make_and_validate_key(key, tag)
         cursor: Cursor = self.sqlite(
             'SELECT * '
@@ -368,40 +363,33 @@ class DiskCache(BaseCache):
         """ Keep type avoid keys conflict. """
         return '%s(%s)' % (type(key).__name__, key)
 
-    def _make_cache_dependencies(self, queries: Optional[List] = None) -> NoReturn:
+    def _make_cache_dependencies(self, tables: Optional[Dict[str, Any]] = None) -> NoReturn:
 
-        base_queries: List[str] = list()
-        for name, info in TABLES.items():
+        # collection table schema and construct
+        queries: List[str] = list()
+        tables: Dict[str, Any] = tables if tables is not None else TABLES
+        for name, info in tables.items():
             schema = info['schema']
             if schema:
-                base_queries.append(schema)
+                queries.append(schema)
 
-            index = info['construct']
+            index: str = info['construct']
             if index:
-                base_queries.extend(index)
-
-            # view = info['view']
-            # if view:
-            #     base_queries.extend(view)
-
-        if queries:
-            base_queries += queries
-        script: str = ';'.join(base_queries)
+                queries.extend(index)
 
         # Create tables.
-        self.sqlite.executescript(
-            script
-        )
+        self.session.executescript(';'.join(queries))
 
-        # Fill base data.
-        if not self.sqlite.execute(
+        # init data table
+        if not self.sqlite(
             'SELECT 1 FROM `info` WHERE `rowid` = 1'
         ).fetchone():
-            self.sqlite.execute(
+            self.sqlite(
                 'INSERT INTO `info`(`count`) VALUES (0)'
             )
 
     def _sub_count(self) -> bool:
+
         with self._transact() as sqlite:
             return sqlite(
                 'UPDATE `info` SET `count` = `count` - 1 '
@@ -412,25 +400,3 @@ class DiskCache(BaseCache):
     __getitem__ = get
     __setitem__ = set
 
-
-def mark(cache=None):
-    if cache is None:
-        cache = DiskCache()
-    for i in range(1000):
-        print(f'set index %d' % i)
-        cache.set('%d' % i, i)
-
-
-if __name__ == '__main__':
-    # from diskcache import Cache
-    # cache = Cache()
-    s = current()
-    # cache = Cache()
-    ps = [Process(target=mark) for _ in range(10)]
-    [p.start() for p in ps]
-    [p.join() for p in ps]
-    print(current() - s)
-    cache = DiskCache()
-    ps = [Process(target=mark, args=(cache,)) for _ in range(10)]
-    [p.start() for p in ps]
-    [p.join() for p in ps]
