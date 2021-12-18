@@ -247,6 +247,13 @@ class DiskCache(BaseCache):
                 'WHERE `rowid` = 1'
             ).rowcount == 1
 
+    def has_key(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
+        key: str = self.make_and_validate_key(key, tag)
+        return bool(self.sqlite(
+            'SELECT 1 FROM `cache` WHERE `key` = ? AND `expire` > ?',
+            (key, current())
+        ).fetchone())
+
     def get(self, key: str, default: Any = None, tag: TG = DEFAULT_TAG) -> Any:
 
         key: str = self.make_and_validate_key(key, tag)
@@ -400,3 +407,8 @@ class DiskCache(BaseCache):
     __getitem__ = get
     __setitem__ = set
 
+
+# if __name__ == '__main__':
+#     cache = DiskCache()
+#     cache.set('name', 'venus')
+#     print(cache.has_key('name'))
