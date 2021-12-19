@@ -4,14 +4,12 @@
 # Author: clarkmonkey@163.com
 
 from contextlib import contextmanager
-from multiprocessing import Process
 from os import getpid
 from pathlib import Path
 from sqlite3.dbapi2 import Connection, Cursor, connect, OperationalError
 from threading import Lock, local, get_ident
 from time import time as current, sleep
 from typing import NoReturn, Type, Union, Optional, Dict, Any, List, Tuple, Callable
-
 from cache3 import BaseCache
 from cache3.setting import (
     DEFAULT_TIMEOUT, DEFAULT_TAG, DEFAULT_STORE,
@@ -64,6 +62,13 @@ TABLES = {
         ]
     }
 }
+
+
+def dict_factory(cursor: Cursor, row: Tuple) -> Dict:
+    d: dict = dict()
+    for idx, col in enumerate(cursor.description):
+        d[col[0]] = row[idx]
+    return d
 
 
 class SessionDescriptor:
@@ -319,18 +324,19 @@ class DiskCache(BaseCache):
 
     def inspect(self, key: str, tag: TG = DEFAULT_TAG) -> Optional[Dict[str, Any]]:
 
-        key: str = self.make_and_validate_key(key, tag)
+        serial_key: str = self.make_and_validate_key(key, tag)
         cursor: Cursor = self.sqlite(
             'SELECT * '
             'FROM `cache` '
             'WHERE `key` = ? AND `tag` = ?',
-            (key, tag)
+            (serial_key, tag)
         )
-        row: Optional[Tuple] = cursor.fetchone()
+        cursor.row_factory = dict_factory
+        row: Optional[Dict[str, Any]] = cursor.fetchone()
         if row:
-            info = {k[0]: v for k, v in zip(cursor.description, row)}
-            info['value'] = self.deserialize(info['value'])
-            return info
+            row['key'] = key
+            row['value'] = self.deserialize(row['value'])
+            return row
 
     def incr(self, key: str, delta: int = 1, tag: TG = DEFAULT_TAG) -> Number:
 
@@ -403,12 +409,18 @@ class DiskCache(BaseCache):
                 'WHERE `rowid` = 1'
             ).rowcount == 1
 
+    def get_many(self, keys: List[str], tag: TG = DEFAULT_TAG) -> Dict[str, Any]:
+
+        seral_keys = [self.make_and_validate_key(key) for key in keys]
+        snap = str('?, ' * len(keys)).strip(', ')
+        query: str = 'SELECT `value` FROM `cache` WHERE `key` in (%s)' % snap
+        cursor: Cursor = self.sqlite(
+            query, seral_keys
+        )
+        values = [self.deserialize(i[0]) for i in cursor]
+        return dict(zip(keys, values))
+
     __delitem__ = delete
     __getitem__ = get
     __setitem__ = set
 
-
-# if __name__ == '__main__':
-#     cache = DiskCache()
-#     cache.set('name', 'venus')
-#     print(cache.has_key('name'))
