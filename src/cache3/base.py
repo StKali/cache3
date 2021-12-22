@@ -104,22 +104,6 @@ class BaseCache:
                 returns[key] = value
         return returns
 
-    def get_or_set(self, key: str, default: Any, timeout=DEFAULT_TIMEOUT,
-                   tag: TG = DEFAULT_TAG) -> Any:
-        """ Fetch a given key from the cache. If the key does not exist,
-        add the key and set it to the default value. If timeout is given,
-        use that timeout for the key; otherwise use the default cache timeout.
-
-        Return the value of the key stored or retrieved.
-        """
-        value: Any = self.get(key, empty, tag=tag)
-        if value is empty:
-            self.set(key, default, timeout=timeout, tag=tag)
-            # Fetch the value again to avoid a race condition if another caller
-            # added a value between the first get() and the add() above.
-            return self.get(key, default, tag=tag)
-        return value
-
     def touch(self, key: str, timeout: Number, tag: TG = DEFAULT_TAG) -> bool:
         """ Update the key's expiry time using timeout. Return True if successful
         or False if the key does not exist.
