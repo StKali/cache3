@@ -6,7 +6,7 @@
 import functools
 import warnings
 from time import time as current
-from typing import Any, Type, Optional, Union, Dict, Tuple, Callable, NoReturn, List
+from typing import Any, Type, Optional, Union, Dict, Tuple, Callable, NoReturn, List, Iterator
 
 from cache3.utils import empty
 from cache3.setting import (
@@ -138,7 +138,13 @@ class BaseCache:
         as much as possible. At the same time, subclasses typically
         override the method to generate a specific key.
         """
-        return '%s(%s):%s(%s)' % (type(key).__name__, key, type(tag).__name__, tag)
+
+        return '%s:%s' % (key, tag)
+
+    @staticmethod
+    def _get_key_tag(serial_key: str) -> List[str]:
+        """ extract key and tag from serialize key """
+        return serial_key.split(':')
 
     def validate_key(self, key: str) -> Tuple[Optional[str], bool]:
         """ The incoming key is validated to fit the logic of the
@@ -285,6 +291,11 @@ class BaseCache:
     def __repr__(self) -> str:
         return "<%s '%s' timeout:%.2f>" % (
             self.__class__.__name__, self._name, self._timeout
+        )
+
+    def __iter__(self) -> Iterator:
+        raise NotImplementedError(
+            'subclasses of BaseCache must provide a __iter__() method.'
         )
 
     __delitem__ = delete

@@ -7,7 +7,7 @@ import doctest
 from collections import OrderedDict
 from threading import Lock
 from time import time as current
-from typing import Dict, Any, Type, Union, Optional, NoReturn
+from typing import Dict, Any, Type, Union, Optional, NoReturn, Iterator
 
 from cache3 import BaseCache
 from cache3.utils import NullContext
@@ -155,12 +155,19 @@ class SimpleCache(BaseCache):
         return True
 
     def _set(self, key: str, value: Any, timeout=DEFAULT_TIMEOUT) -> bool:
+
         if self._timeout and len(self._cache) >= self._max_size:
             self.evictor()
         self._cache[key] = value
         self._cache.move_to_end(key, last=False)
         self._expire_info[key] = self.get_backend_timeout(timeout)
         return True
+
+    def __iter__(self) -> Iterator:
+        for serial_key, value in self._cache.items():
+            if not self._has_expired(serial_key):
+                key, tag = self._get_key_tag(serial_key)
+                yield {key: (tag, value)}
 
     __delitem__ = delete
     __getitem__ = get

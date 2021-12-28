@@ -9,7 +9,7 @@ from pathlib import Path
 from sqlite3.dbapi2 import Connection, Cursor, connect, OperationalError
 from threading import Lock, local, get_ident
 from time import time as current, sleep
-from typing import NoReturn, Type, Union, Optional, Dict, Any, List, Tuple, Callable
+from typing import NoReturn, Type, Union, Optional, Dict, Any, List, Tuple, Callable, Iterator
 from cache3 import BaseCache
 from cache3.setting import (
     DEFAULT_TIMEOUT, DEFAULT_TAG, DEFAULT_STORE,
@@ -374,7 +374,7 @@ class DiskCache(BaseCache):
 
     def make_key(self, key: str, tag: Optional[str]) -> str:
         """ Keep type avoid keys conflict. """
-        return '%s(%s)' % (type(key).__name__, key)
+        return '%s:%s' % (type(key).__name__, key)
 
     def _make_cache_dependencies(self, tables: Optional[Dict[str, Any]] = None) -> NoReturn:
 
@@ -420,7 +420,24 @@ class DiskCache(BaseCache):
         values = [self.deserialize(i[0]) for i in cursor]
         return dict(zip(keys, values))
 
+    def __iter__(self) -> Iterator:
+
+        for line in self.sqlite(
+            'SELECT `key`, `value`, `tag` '
+            'FROM `cache` '
+            'WHERE `expire` > ?',
+            (current(),)
+        ):
+            serial_key, value, tag = line
+            type_str, key = serial_key.split(':')
+            # A maliciously constructed string may cause
+            # serious security problems. Therefore, the
+            # key must be strictly verified.
+
+            # FIXME: Must delete or replace or verify ~
+            #  very very very dangerous ~
+            yield eval(type_str)(key), value, tag
+
     __delitem__ = delete
     __getitem__ = get
     __setitem__ = set
-
