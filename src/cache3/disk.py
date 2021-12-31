@@ -255,7 +255,7 @@ class DiskCache(BaseCache):
     def has_key(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
         key: str = self.make_and_validate_key(key, tag)
         return bool(self.sqlite(
-            'SELECT 1 FROM `cache` WHERE `key` = ? AND `expire` > ?',
+            'SELECT 1 FROM `cache` WHERE `key` = ? AND (`expire` IS NULL OR `expire` > ?)',
             (key, current())
         ).fetchone())
 
@@ -318,7 +318,7 @@ class DiskCache(BaseCache):
         with self._transact() as sqlite:
             return sqlite(
                 'UPDATE `cache` SET `expire` = ? '
-                'WHERE `key` = ? AND `tag` = ? AND `expire` > ?',
+                'WHERE `key` = ? AND `tag` = ? AND (`expire` IS NULL OR `expire` > ?)',
                 (new_expire, key, tag, current())
             ).rowcount == 1
 
@@ -344,7 +344,7 @@ class DiskCache(BaseCache):
         with self._transact() as sqlite:
             success: bool = sqlite(
                 'UPDATE `cache` SET `value`=`value` + %s '
-                'WHERE `key` = ? AND `tag` = ? AND `expire` > ?' % delta,
+                'WHERE `key` = ? AND `tag` = ? AND (`expire` IS NULL OR `expire` > ?)' % delta,
                 (serial_key, tag, current())
             ).rowcount == 1
 
@@ -413,7 +413,7 @@ class DiskCache(BaseCache):
 
         seral_keys = [self.make_and_validate_key(key) for key in keys]
         snap = str('?, ' * len(keys)).strip(', ')
-        query: str = 'SELECT `value` FROM `cache` WHERE `key` in (%s)' % snap
+        query: str = 'SELECT `value` FROM `cache` WHERE `key` IN (%s)' % snap
         cursor: Cursor = self.sqlite(
             query, seral_keys
         )
@@ -425,7 +425,7 @@ class DiskCache(BaseCache):
         for line in self.sqlite(
             'SELECT `key`, `value`, `tag` '
             'FROM `cache` '
-            'WHERE `expire` > ?',
+            'WHERE (`expire` IS NULL OR `expire` > ?)',
             (current(),)
         ):
             serial_key, value, tag = line
