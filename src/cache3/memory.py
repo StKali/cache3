@@ -132,10 +132,6 @@ class SimpleCache(BaseCache):
             self._expire_info.clear()
         return True
 
-    def _has_expired(self, key: str) -> bool:
-        exp: float = self._expire_info.get(key, -1.)
-        return exp is not None and exp <= current()
-
     def lru_evict(self) -> NoReturn:
         if self._cull_size == 0:
             self._cache.clear()
@@ -145,6 +141,10 @@ class SimpleCache(BaseCache):
             for i in range(count):
                 key, _ = self._cache.popitem()
                 del self._expire_info[key]
+
+    def _has_expired(self, key: str) -> bool:
+        exp: float = self._expire_info.get(key, -1.)
+        return exp is not None and exp <= current()
 
     def _delete(self, key: str) -> bool:
         try:

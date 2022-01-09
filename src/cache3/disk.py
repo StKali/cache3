@@ -171,6 +171,190 @@ class DiskCache(BaseCache):
         )
         self._make_cache_dependencies()
 
+    def set(self, key: str, value: Any, timeout: Number = DEFAULT_TIMEOUT,
+            tag: TG = DEFAULT_TAG) -> bool:
+
+        key: str = self.make_and_validate_key(key, tag)
+        value: Any = self.serialize(value)
+        now: Time = current()
+        expire: Optional[Number] = self.get_backend_timeout(timeout)
+        with self._transact() as sqlite:
+            success: bool = sqlite(
+                'INSERT OR REPLACE INTO `cache`('
+                '`key`, `store`, `expire`, `access`, `access_count`, `tag`, `value`'
+                ') VALUES (?, ?, ?, ?, ?, ?, ?)',
+                (key, now, expire, now, 0, tag, value)
+            ).rowcount == 1
+            if success:
+                self._add_count()
+                self.evictor()
+        return success
+
+    def get(self, key: str, default: Any = None, tag: TG = DEFAULT_TAG) -> Any:
+
+        key: str = self.make_and_validate_key(key, tag)
+        row: Tuple[Number, Any] = self.sqlite(
+            'SELECT `expire`, `value` '
+            'FROM `cache` '
+            'WHERE `key` = ? AND `tag` = ?',
+            (key, tag)
+        ).fetchone()
+
+        if not row:
+            return default
+
+        query_expire, query_value = row
+        now: Time = current()
+        if query_expire is not None and query_expire < now:
+            return default
+        return self.deserialize(query_value)
+
+    def ex_set(self, key: str, value: Any, timeout: float = DEFAULT_TIMEOUT,
+               tag: Optional[str] = DEFAULT_TAG) -> bool:
+
+        if self.has_key(key, tag):
+            return False
+
+        key: str = self.make_key(key, tag)
+        now: Time = current()
+        expire: float = self.get_backend_timeout(timeout)
+        with self._transact() as sqlite:
+            success: bool = sqlite(
+                'INSERT OR REPLACE INTO `cache`( '
+                '`key`, `store`, `expire`, `access`, `access_count`, `tag`, `value`'
+                ') VALUES (?, ?, ?, ?, ?, ?, ?)',
+                (key, now, expire, now, 0, tag, value)
+            ).rowcount == 1
+            if success:
+                self._add_count()
+        return success
+
+    def get_many(self, keys: List[str], tag: TG = DEFAULT_TAG) -> Dict[str, Any]:
+
+        seral_keys: List[str] = [self.make_and_validate_key(key) for key in keys]
+        snap: str = str('?, ' * len(keys)).strip(', ')
+        query: str = (
+                         'SELECT `value` '
+                         'FROM `cache` '
+                         'WHERE `key` IN (%s)'
+                     ) % snap
+        cursor: Cursor = self.sqlite(
+            query, seral_keys
+        )
+        values: List[Any] = [self.deserialize(i[0]) for i in cursor]
+        return dict(zip(keys, values))
+
+    def touch(self, key: str, timeout: Number, tag: TG = DEFAULT_TAG) -> bool:
+
+        key: str = self.make_and_validate_key(key, tag)
+        new_expire: Number = self.get_backend_timeout(timeout)
+        with self._transact() as sqlite:
+            return sqlite(
+                'UPDATE `cache` SET `expire` = ? '
+                'WHERE `key` = ? '
+                'AND `tag` = ? '
+                'AND (`expire` IS NULL OR `expire` > ?)',
+                (new_expire, key, tag, current())
+            ).rowcount == 1
+
+    def delete(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
+
+        key: str = self.make_and_validate_key(key, tag)
+        with self._transact() as sqlite:
+            success: bool = sqlite(
+                'DELETE FROM `cache` '
+                'WHERE `key` = ? AND `tag` = ?',
+                (key, tag)
+            ).rowcount == 1
+            if success:
+                self._sub_count()
+        return success
+
+    def inspect(self, key: str, tag: TG = DEFAULT_TAG) -> Optional[Dict[str, Any]]:
+
+        serial_key: str = self.make_and_validate_key(key, tag)
+        cursor: Cursor = self.sqlite(
+            'SELECT * '
+            'FROM `cache` '
+            'WHERE `key` = ? AND `tag` = ?',
+            (serial_key, tag)
+        )
+        cursor.row_factory = dict_factory
+        row: Optional[Dict[str, Any]] = cursor.fetchone()
+        if row:
+            row['key'] = key
+            row['value'] = self.deserialize(row['value'])
+            return row
+
+    def incr(self, key: str, delta: int = 1, tag: TG = DEFAULT_TAG) -> Number:
+
+        serial_key: str = self.make_and_validate_key(key, tag)
+        with self._transact() as sqlite:
+            success: bool = sqlite(
+                'UPDATE `cache` SET `value`=`value` + %s '
+                'WHERE `key` = ? '
+                'AND `tag` = ? '
+                'AND (`expire` IS NULL OR `expire` > ?)' % delta,
+                (serial_key, tag, current())
+            ).rowcount == 1
+
+        if not success:
+            raise ValueError("Key '%s' not found" % key)
+
+        (value, ) = self.sqlite(
+            'SELECT `value` FROM `cache` '
+            'WHERE `key` = ? AND `tag` = ?',
+            (serial_key, tag)
+        ).fetchone()
+
+        return value
+
+    def has_key(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
+        key: str = self.make_and_validate_key(key, tag)
+        return bool(self.sqlite(
+            'SELECT 1 FROM `cache` '
+            'WHERE `key` = ? AND (`expire` IS NULL OR `expire` > ?)',
+            (key, current())
+        ).fetchone())
+
+    def clear(self):
+        """ FIXME :: NoQA """
+        try:
+            self.session.executescript(
+                'DELETE FROM `sqlite_sequence` '
+                'WHERE `name` = cache;'
+                'UPDATE `info` SET `size` = 0, `count` = 0 '
+                'WHERE rowid = 1'
+            )
+        except OperationalError:
+            self.session.executescript(
+                'DELETE FROM `cache`;'
+                'UPDATE `info` SET `count` = 0 '
+                'WHERE rowid = 1'
+            )
+
+    def make_key(self, key: str, tag: Optional[str]) -> str:
+        """ Keep type avoid keys conflict. """
+        return '%s:%s' % (type(key).__name__, key)
+
+    def lru_evict(self) -> NoReturn:
+
+        # Get current k-v pair count.
+        (count, ) = self.sqlite(
+            'SELECT `count` FROM `info` '
+            'WHERE `rowid` = 1'
+        ).fetchone()
+
+        # reduce k-v pair to follow count limit
+        if count > self._max_size:
+            with self._transact() as sqlite:
+                sqlite(
+                    'DELETE FROM `cache` WHERE `rowid` IN ('
+                    'SELECT `rowid` FROM `cache` '
+                    'ORDER BY `access` LIMIT ?)',
+                    (self._cull_size, )
+                )
+
     @property
     def sqlite(self):
         return self.session.execute
@@ -209,172 +393,11 @@ class DiskCache(BaseCache):
                 self._txn_id = None
                 sql('COMMIT')
 
-    def set(self, key: str, value: Any, timeout: Number = DEFAULT_TIMEOUT,
-            tag: TG = DEFAULT_TAG) -> bool:
-
-        key: str = self.make_and_validate_key(key, tag)
-        value: Any = self.serialize(value)
-        now: Time = current()
-        expire: Optional[Number] = self.get_backend_timeout(timeout)
-        with self._transact() as sqlite:
-            success: bool = sqlite(
-                'INSERT OR REPLACE INTO `cache`('
-                '`key`, `store`, `expire`, `access`, `access_count`, `tag`, `value`'
-                ') VALUES (?, ?, ?, ?, ?, ?, ?)',
-                (key, now, expire, now, 0, tag, value)
-            ).rowcount == 1
-            if success:
-                self._add_count()
-                self.evictor()
-        return success
-
-    def lru_evict(self) -> NoReturn:
-
-        # Get current k-v pair count.
-        (count, ) = self.sqlite(
-            'SELECT `count` FROM `info` '
-            'WHERE `rowid` = 1'
-        ).fetchone()
-
-        # reduce k-v pair to follow count limit
-        if count > self._max_size:
-            with self._transact() as sqlite:
-                sqlite(
-                    'DELETE FROM `cache` WHERE `rowid` IN ('
-                    'SELECT `rowid` FROM `cache` '
-                    'ORDER BY `access` LIMIT ?)',
-                    (self._cull_size, )
-                )
-
     def _add_count(self) -> bool:
         return self.sqlite(
                 'UPDATE `info` SET `count` = `count` + 1 '
                 'WHERE `rowid` = 1'
             ).rowcount == 1
-
-    def has_key(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
-        key: str = self.make_and_validate_key(key, tag)
-        return bool(self.sqlite(
-            'SELECT 1 FROM `cache` WHERE `key` = ? AND (`expire` IS NULL OR `expire` > ?)',
-            (key, current())
-        ).fetchone())
-
-    def get(self, key: str, default: Any = None, tag: TG = DEFAULT_TAG) -> Any:
-
-        key: str = self.make_and_validate_key(key, tag)
-        row: Tuple[Number, Any] = self.sqlite(
-            'SELECT `expire`, `value` '
-            'FROM `cache` '
-            'WHERE `key` = ? AND `tag` = ?',
-            (key, tag)
-        ).fetchone()
-
-        if not row:
-            return default
-
-        query_expire, query_value = row
-        now: Time = current()
-        if query_expire is not None and query_expire < now:
-            return default
-        return self.deserialize(query_value)
-
-    def ex_set(self, key: str, value: Any, timeout: float = DEFAULT_TIMEOUT,
-               tag: Optional[str] = DEFAULT_TAG) -> bool:
-
-        if self.has_key(key, tag):
-            return False
-
-        key: str = self.make_key(key, tag)
-        now: Time = current()
-        expire: float = self.get_backend_timeout(timeout)
-        with self._transact() as sqlite:
-            success: bool = sqlite(
-                'INSERT OR REPLACE INTO `cache`( '
-                '`key`, `store`, `expire`, `access`, `access_count`, `tag`, `value`'
-                ') VALUES (?, ?, ?, ?, ?, ?, ?) ',
-                (key, now, expire, now, 0, tag, value)
-            ).rowcount == 1
-            if success:
-                self._add_count()
-        return success
-
-    def delete(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
-
-        key: str = self.make_and_validate_key(key, tag)
-        with self._transact() as sqlite:
-            success: bool = sqlite(
-                'DELETE FROM `cache` '
-                'WHERE `key` = ? AND `tag` = ?',
-                (key, tag)
-            ).rowcount == 1
-            if success:
-                self._sub_count()
-        return success
-
-    def touch(self, key: str, timeout: Number, tag: TG = DEFAULT_TAG) -> bool:
-
-        key: str = self.make_and_validate_key(key, tag)
-        new_expire: Number = self.get_backend_timeout(timeout)
-        with self._transact() as sqlite:
-            return sqlite(
-                'UPDATE `cache` SET `expire` = ? '
-                'WHERE `key` = ? AND `tag` = ? AND (`expire` IS NULL OR `expire` > ?)',
-                (new_expire, key, tag, current())
-            ).rowcount == 1
-
-    def inspect(self, key: str, tag: TG = DEFAULT_TAG) -> Optional[Dict[str, Any]]:
-
-        serial_key: str = self.make_and_validate_key(key, tag)
-        cursor: Cursor = self.sqlite(
-            'SELECT * '
-            'FROM `cache` '
-            'WHERE `key` = ? AND `tag` = ?',
-            (serial_key, tag)
-        )
-        cursor.row_factory = dict_factory
-        row: Optional[Dict[str, Any]] = cursor.fetchone()
-        if row:
-            row['key'] = key
-            row['value'] = self.deserialize(row['value'])
-            return row
-
-    def incr(self, key: str, delta: int = 1, tag: TG = DEFAULT_TAG) -> Number:
-
-        serial_key: str = self.make_and_validate_key(key, tag)
-        with self._transact() as sqlite:
-            success: bool = sqlite(
-                'UPDATE `cache` SET `value`=`value` + %s '
-                'WHERE `key` = ? AND `tag` = ? AND (`expire` IS NULL OR `expire` > ?)' % delta,
-                (serial_key, tag, current())
-            ).rowcount == 1
-
-        if not success:
-            raise ValueError("Key '%s' not found" % key)
-
-        (value, ) = self.sqlite(
-            'SELECT `value` FROM `cache` '
-            'WHERE `key` = ? AND `tag` = ?',
-            (serial_key, tag)
-        ).fetchone()
-
-        return value
-
-    def clear(self):
-        """ FIXME :: NoQA """
-        try:
-            self.session.executescript(
-                'DELETE FROM `sqlite_sequence` WHERE `name` = cache;'
-                'UPDATE `info` SET `size` = 0, `count` = 0 WHERE rowid = 1'
-            )
-        except OperationalError:
-            self.session.executescript(
-                'DELETE FROM `cache`;'
-                'UPDATE `info` SET `count` = 0 WHERE rowid = 1'
-            )
-
-    def make_key(self, key: str, tag: Optional[str]) -> str:
-        """ Keep type avoid keys conflict. """
-        return '%s:%s' % (type(key).__name__, key)
 
     def _make_cache_dependencies(self, tables: Optional[Dict[str, Any]] = None) -> NoReturn:
 
@@ -408,17 +431,6 @@ class DiskCache(BaseCache):
                 'UPDATE `info` SET `count` = `count` - 1 '
                 'WHERE `rowid` = 1'
             ).rowcount == 1
-
-    def get_many(self, keys: List[str], tag: TG = DEFAULT_TAG) -> Dict[str, Any]:
-
-        seral_keys = [self.make_and_validate_key(key) for key in keys]
-        snap = str('?, ' * len(keys)).strip(', ')
-        query: str = 'SELECT `value` FROM `cache` WHERE `key` IN (%s)' % snap
-        cursor: Cursor = self.sqlite(
-            query, seral_keys
-        )
-        values = [self.deserialize(i[0]) for i in cursor]
-        return dict(zip(keys, values))
 
     def __iter__(self) -> Iterator:
 
