@@ -11,6 +11,7 @@ from cache3.base import CacheKeyWarning
 from cache3 import BaseCache, SimpleCache, SafeCache, DiskCache
 from cache3.utils import empty
 from cache3.setting import MAX_KEY_LENGTH
+from time import time as current
 
 parametrize = pytest.mark.parametrize
 
@@ -48,10 +49,27 @@ ex_set_cases: List = [
 
 
 class GeneralCase:
+
     CLASS: Optional[Type] = None
 
     def setup_class(self):
         self.cache: BaseCache = self.CLASS()
+
+    # __delitem__, __setitem__, __getitem__
+    @parametrize('key, value', general_cases)
+    def test_logic_item_methods(self, key, value):
+        self.cache[key] = value
+        assert self.cache[key] == value
+        del self.cache[key]
+        assert not self.cache.has_key(key)
+
+    # __init__
+    def test_construct_method(self):
+        cache = self.CLASS(name='simple_cache', timeout=20, max_size=1 << 10)
+        start = current()
+        cache.set('key', 'value')
+        expire: float = self.get_expire('key')
+        assert expire > start + 20
 
     @parametrize('k1, v1, k2, v2', consistency_cases)
     def test_consistency(self, k1, v1, k2, v2):
@@ -149,6 +167,8 @@ class GeneralCase:
 
     def get_expire(self, key) -> float:
         inspect = self.cache.inspect(key)
+        if not isinstance(inspect, dict):
+            print(inspect, type(inspect))
         assert isinstance(inspect, dict)
         return inspect['expire']
 
