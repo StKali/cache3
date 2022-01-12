@@ -68,3 +68,16 @@ class TestSafeCache(BaseCache):
 # class TestDiskCache(DiskCache):
 #
 #     CLASS = DiskCache()
+
+
+def test_lru_evict():
+    """"""
+
+
+def test_fifo_evict():
+    """"""
+
+
+def test_lfu_evict():
+    """"""
+

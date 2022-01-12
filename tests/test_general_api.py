@@ -3,195 +3,190 @@
 # DATE: 2021/11/6
 # Author: clarkmonkey@163.com
 
-from typing import Any, List, Tuple, Type, Optional
+from typing import List, Tuple, Any, Optional
 
 import pytest
 
-from cache3.base import CacheKeyWarning
-from cache3 import BaseCache, SimpleCache, SafeCache, DiskCache
-from cache3.utils import empty
-from cache3.setting import MAX_KEY_LENGTH
-from time import time as current
+from cache3 import SimpleCache, SafeCache, SimpleDiskCache, DiskCache, JsonDiskCache
+from cache3.setting import DEFAULT_TAG
 
-parametrize = pytest.mark.parametrize
 
-consistency_cases: List[Tuple[Any, ...]] = [
-    (1, 1, b'1', 2),
-    (b'2', 1, '2', 2),
-    (b'', 1, '', 2)
+def get_expire(cache, key, tag: str = DEFAULT_TAG) -> Optional:
+
+    info = cache.inspect(key, tag)
+    if info:
+        return info['expire']
+
+
+many_pair: List[Tuple[Any, ...]] = [
+    ('string', 'hades', 'tag1'),   # normal
+    ('id', 111, 'tag3'),    # integer value
+    ('bytes', b'111', 'tag3'),    # bytes value
+    ('mark:group:1:name', 'venus', 'tag2'),  # `:` gap mark
+    ('mark:group:2:name', True, 'tag2'),  # `:` gap mark
 ]
-
-general_cases: List = [
-    ('name', 'clarkmonkey'),
-    (b'gender', 'male'),
-    (1, None),
-]
-
-expire_cases: List = [
-    ('name1', 'clarkmonkey', 1),
-    (11, 1, 1),
-    (112, None, 1),
-    (None, None, 0.1)
-]
-
-incr_cases: List = [
-    ('count1', 1, 1),
-    ('count2', -1, 1),
-    ('count3', 0, 1 << 30),
-]
-
-ex_set_cases: List = [
-    ('key1', 'value1', 'value2'),
-    (123, 456, 789),
-    (b'123', None, ''),
-    (b'', 45, ''),
-]
+params = pytest.mark.parametrize
 
 
-class GeneralCase:
+class BaseCacheApi:
 
-    CLASS: Optional[Type] = None
+    klass = SimpleCache
 
     def setup_class(self):
-        self.cache: BaseCache = self.CLASS()
+        """ construct cache. """
+        self.cache = self.klass()
 
-    # __delitem__, __setitem__, __getitem__
-    @parametrize('key, value', general_cases)
-    def test_logic_item_methods(self, key, value):
+    def setup_method(self):
+        """ clear cache """
+        self.cache.clear()
+
+    # api >>> __delitem__, __setitem__, __getitem__
+    @params('key, value, tag', many_pair)
+    def test_item_operators(self, key, value, tag):
+        """ tag not used """
         self.cache[key] = value
         assert self.cache[key] == value
         del self.cache[key]
+        assert self.cache[key] is None
         assert not self.cache.has_key(key)
 
-    # __init__
-    def test_construct_method(self):
-        cache = self.CLASS(name='simple_cache', timeout=20, max_size=1 << 10)
-        start = current()
-        cache.set('key', 'value')
-        expire: float = self.get_expire('key')
-        assert expire > start + 20
+    # api >>> __iter__
+    def test_iter(self, data: List[Tuple[Any, ...]] = many_pair):
+        for key, value, tag in data:
+            self.cache.set(key=key, value=value, tag=tag)
 
-    @parametrize('k1, v1, k2, v2', consistency_cases)
-    def test_consistency(self, k1, v1, k2, v2):
-        self.cache[k1] = v1
-        self.cache[k2] = v2
-        assert self.cache[k1] == v1 and self.cache[k2] == v2
+        result = []
+        for elem in self.cache:
+            assert isinstance(elem, tuple)
+            result.append(elem)
+        assert result == data
 
-    @parametrize('key, value', general_cases)
-    def test_delete_has_key(self, key, value):
+    # api >>> clear
+    # def test_clear(self, data: List[Tuple[Any, ...]] = many_pair):
+    #     for key, value, tag in data[::-1]:
+    #         self.cache.set(key=key, value=value, tag=tag)
+    #     assert len(self.cache._cache) != 0
+    #     self.cache.clear()
+    #     assert len(self.cache._cache) == 0
+
+
+    # api >>> delete
+    @params('key, value, tag', many_pair)
+    def test_delete(self, key, value, tag):
+
+        assert self.cache.set(key=key, value=value, tag=tag)
+        assert self.cache.has_key(key, tag=tag)
+        assert self.cache.delete(key, tag=tag)
+        assert not self.cache.delete(key)   # return false if no specify tag
+        assert not self.cache.has_key(key, tag=tag)
+
+
+    # api >>> ex_set
+    @params('key, value, tag', many_pair)
+    def test_ex_set(self, key, value, tag):
+
+        assert self.cache.ex_set(key, value, tag=tag)
+        assert not self.cache.ex_set(key, value, tag=tag)
+        assert self.cache.delete(key, tag=tag)
+        assert self.cache.ex_set(key, value, tag=tag)
+
+    # api >>> get
+    @params('key, value, tag', many_pair)
+    def test_get(self, key, value, tag):
+
+        assert self.cache.set(key, value, tag=tag)
+        assert self.cache.get(key, tag=tag)
+        self.cache.delete(key, tag=tag)
+        assert not self.cache.get(key)
+
+
+    # api >>> has_key
+    # Has been covered api
+
+
+    # api:success >>> incr
+    @params('key, value', [
+        ('integer', 0),
+        ('float', 0.0)
+    ])
+    def test_incr(self, key, value) -> None:
 
         self.cache[key] = value
-        assert self.cache.has_key(key)
-        del self.cache[key]
-        assert self.cache.get(key, empty) is empty
+        for i in range(10):
+            self.cache.incr(key, delta=1)
+            value += 1
+
+        assert self.cache[key] == value
+
+    # api:invalid >>> incr
+    @params('key, value', [
+        ('string', '0'),
+        ('bytes', b'0'),
+        # ('object', object()),
+        # ('list', [1, 2,3]),
+        # ('tuple', (1,)),
+        # ('None', None),
+    ])
+    def test_type_error(self, key, value):
+        self.cache[key] = value
+        with pytest.raises(TypeError, match=''):
+            self.cache.incr(key)
+
+    # api:timeout >>> incr
+    def test_timeout_incr(self):
+        key: str = 'count'
+        self.cache.set(key, 0, timeout=0)
         assert not self.cache.has_key(key)
+        with pytest.raises(ValueError):
+            self.cache.incr(key)
 
-    def test_clear(self):
-        for key, value in general_cases:
-            self.cache[key] = value
-        self.cache.clear()
-        for key, _ in general_cases:
-            assert not self.cache.has_key(key)
+    # api >>> inspect
+    # Has been covered api
 
-    @parametrize('key, value, timeout', expire_cases)
+    # api >>> touch
+    @params('key, value, timeout', [
+        ('name1', 'clarkmonkey', 1),
+        ('name2', 1, 1),
+        ('name3', None, 1),
+        # ('name4', 0.1)
+    ])
     def test_timeout_touch(self, key, value, timeout):
         self.cache.set(key, value, timeout=timeout)
-        expire = self.get_expire(key)
+        expire = get_expire(self.cache, key)
         self.cache.touch(key, 100)
-        new_expire = self.get_expire(key)
+        new_expire = get_expire(self.cache, key)
         assert new_expire - expire > 100 - timeout - .2
         assert self.cache.touch(key, -1)
         assert not self.cache.touch(key, 1)
 
-    @parametrize('key, value, delta', incr_cases)
-    def test_incr(self, key, value, delta):
-        self.cache[key] = value
-        res = value + delta
-        assert res == self.cache.incr(key, delta)
-        assert res == self.cache[key]
 
-    @parametrize('key, value, delta', incr_cases)
-    def test_decr(self, key, value, delta):
-        self.cache[key] = value
-        res = value - delta
-        assert res == self.cache.decr(key, delta)
-        assert res == self.cache[key]
-
-    @parametrize('key, value1, value2', ex_set_cases)
-    def test_ex_set(self, key, value1, value2):
-        self.cache.set(key, value1)
-        assert not self.cache.ex_set(key, value2)
-        assert self.cache[key] == value1
-        del self.cache[key]
-        assert self.cache.ex_set(key, value2)
-        assert self.cache[key] == value2
-
-    def test_get_many(self):
-        self.cache['a'] = 1
-        self.cache['b'] = 2
-        self.cache['c'] = 3
-        returns = self.cache.get_many(['a', 'b', 'c'])
-        assert len(returns) == 3
-        assert returns['a'] == 1
-        assert returns['b'] == 2
-        assert returns['c'] == 3
-
-    def test_memoize_error(self):
-
-        with pytest.raises(TypeError) as exc:
-            @self.cache.memoize
-            def func():...
-            assert str(exc).startswith('Name cannot be callable')
-
-    def test_incr_expire(self):
-        key, value = 'key', 'value'
-        self.cache[key] = value
-        assert self.cache.touch(key, -1)
-        with pytest.raises(ValueError) as exc:
-            self.cache.incr(key, 100)
-        assert exc.value.args[0].startswith('Key')
-
-    def test_memoize(self):
-
-        @self.cache.memoize()
-        def add(count):
-            count += 1
-            return count
-
-        assert add(0) == add(234) == add(567) == add(8910) == 1
-
-    def test_big_key(self):
-        key = '1' * (MAX_KEY_LENGTH + 1)
-        with pytest.warns(CacheKeyWarning):
-            self.cache.set(key, '')
-
-    def get_expire(self, key) -> float:
-        inspect = self.cache.inspect(key)
-        if not isinstance(inspect, dict):
-            print(inspect, type(inspect))
-        assert isinstance(inspect, dict)
-        return inspect['expire']
-
-    def test_config(self):
-
-        self.cache.config(evict='lru_evict')
-        assert self.cache.evictor == self.cache.lru_evict
-
-    def teardown_class(self):
-        self.cache.clear()
+    # api >>> lru_evict TODO
 
 
-class TestSimpleCache(GeneralCase):
-    CLASS = SimpleCache
+class TestSimpleCacheApi(BaseCacheApi):
+
+    klass = SimpleCache
 
 
-class TestSafeCache(GeneralCase):
-    CLASS = SafeCache
+class TestSafeCacheApi(BaseCacheApi):
+
+    klass = SafeCache
 
 
-class TestDiskCache(GeneralCase):
-    CLASS = DiskCache
+class TestSimpleDiskCacheApi(BaseCacheApi):
+
+    klass = SimpleDiskCache
+
+
+class TestDiskCacheApi(BaseCacheApi):
+
+    klass = DiskCache
+
+
+class TestJsonDiskCacheApi(BaseCacheApi):
+
+    klass = JsonDiskCache
 
 
 if __name__ == '__main__':
-    pytest.main(['-s'])
+    pytest.main(["-s", __file__])

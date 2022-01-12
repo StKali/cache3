@@ -2,6 +2,9 @@
 # -*- coding: utf-8 -*-
 # DATE: 2021/9/15
 # Author: clarkmonkey@163.com
+# import json
+
+import pickle
 
 from contextlib import contextmanager
 from os import getpid
@@ -16,6 +19,11 @@ from cache3.setting import (
     DEFAULT_SQLITE_TIMEOUT
 )
 from cache3.validate import DirectoryValidate
+
+try:
+    import cjson as json
+except ImportError:
+    import json
 
 Number: Type = Union[int, float]
 TG: Type = Optional[str]
@@ -37,7 +45,7 @@ TABLES = {
     'cache': {
         'schema': (
             'CREATE TABLE IF NOT EXISTS `cache`('
-            '`key` TEXT NOT NULL,'
+            '`key` REAL NOT NULL,'
             '`store` REAL NOT NULL,'
             '`expire` REAL NOT NULL,'
             '`access` REAL NOT NULL,'
@@ -145,13 +153,13 @@ class SessionDescriptor:
         return self._close()
 
 
-class DiskCache(BaseCache):
+class SimpleDiskCache(BaseCache):
 
     session: SessionDescriptor = SessionDescriptor()
     directory: DirectoryValidate = DirectoryValidate()
 
     def __init__(self, directory=DEFAULT_STORE, *args, **kwargs):
-        super(DiskCache, self).__init__(*args, **kwargs)
+        super(SimpleDiskCache, self).__init__(*args, **kwargs)
         self.directory: Path = directory
         self._txn_id = None
         self.args = args
@@ -194,20 +202,17 @@ class DiskCache(BaseCache):
 
         key: str = self.make_and_validate_key(key, tag)
         row: Tuple[Number, Any] = self.sqlite(
-            'SELECT `expire`, `value` '
+            'SELECT `value` '
             'FROM `cache` '
-            'WHERE `key` = ? AND `tag` = ?',
-            (key, tag)
+            'WHERE `key` = ? AND `tag` = ? '
+            'AND (`expire` IS NULL OR `expire` > ?)',
+            (key, tag, current())
         ).fetchone()
 
         if not row:
             return default
-
-        query_expire, query_value = row
-        now: Time = current()
-        if query_expire is not None and query_expire < now:
-            return default
-        return self.deserialize(query_value)
+        return self.deserialize(row[0])
+        # return self.deserialize(query_value)
 
     def ex_set(self, key: str, value: Any, timeout: float = DEFAULT_TIMEOUT,
                tag: Optional[str] = DEFAULT_TAG) -> bool:
@@ -290,24 +295,32 @@ class DiskCache(BaseCache):
 
         serial_key: str = self.make_and_validate_key(key, tag)
         with self._transact() as sqlite:
-            success: bool = sqlite(
-                'UPDATE `cache` SET `value`=`value` + %s '
+            try:
+                (value,) = sqlite(
+                    'SELECT `value` FROM `cache` '
+                    'WHERE `key` = ? AND `tag` = ? '
+                    'AND (`expire` IS NULL OR `expire` > ?)',
+                    (serial_key, tag, current())
+                ).fetchone()
+            except TypeError as exc:
+                raise ValueError("Key '%s' not found" % key) from exc
+
+            value: Any = self.deserialize(value)
+            if not isinstance(value, (int, float)):
+                raise TypeError(
+                    "unsupported operand type(s) for +: '%s' and '%s'"
+                    % (type(value), type(delta))
+                )
+            new_value: Any = value + delta
+
+            sqlite(
+                'UPDATE `cache` SET `value`= ? '
                 'WHERE `key` = ? '
                 'AND `tag` = ? '
-                'AND (`expire` IS NULL OR `expire` > ?)' % delta,
-                (serial_key, tag, current())
-            ).rowcount == 1
-
-        if not success:
-            raise ValueError("Key '%s' not found" % key)
-
-        (value, ) = self.sqlite(
-            'SELECT `value` FROM `cache` '
-            'WHERE `key` = ? AND `tag` = ?',
-            (serial_key, tag)
-        ).fetchone()
-
-        return value
+                'AND (`expire` IS NULL OR `expire` > ?)',
+                (self.serialize(new_value), serial_key, tag, current())
+            )
+        return new_value
 
     def has_key(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
         key: str = self.make_and_validate_key(key, tag)
@@ -335,7 +348,10 @@ class DiskCache(BaseCache):
 
     def make_key(self, key: str, tag: Optional[str]) -> str:
         """ Keep type avoid keys conflict. """
-        return '%s:%s' % (type(key).__name__, key)
+        return key
+
+    def reversed_key(self, serial_key: str) -> str:
+        return serial_key
 
     def lru_evict(self) -> NoReturn:
 
@@ -441,15 +457,42 @@ class DiskCache(BaseCache):
             (current(),)
         ):
             serial_key, value, tag = line
-            type_str, key = serial_key.split(':')
+            key: str = self.reversed_key(serial_key)
+            value: Any = self.deserialize(value)
             # A maliciously constructed string may cause
             # serious security problems. Therefore, the
             # key must be strictly verified.
 
             # FIXME: Must delete or replace or verify ~
             #  very very very dangerous ~
-            yield eval(type_str)(key), value, tag
+            yield key, value, tag
 
     __delitem__ = delete
     __getitem__ = get
     __setitem__ = set
+
+
+class JSONMixin:
+
+    def deserialize(self, dump: Any, *args, **kwargs) -> Any:
+        return json.loads(dump)
+
+    def serialize(self, value: Any, *args, **kwargs) -> Any:
+        return json.dumps(value)
+
+
+class PickleMixin:
+
+    def deserialize(self, dump: Any, *args, **kwargs) -> Any:
+        return pickle.loads(dump)
+
+    def serialize(self, value: Any, *args, **kwargs) -> Any:
+        return pickle.dumps(value)
+
+
+class DiskCache(PickleMixin, SimpleDiskCache):
+    """"""
+
+
+class JsonDiskCache(SimpleDiskCache, JSONMixin):
+    """"""

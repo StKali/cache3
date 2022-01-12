@@ -3,34 +3,59 @@
 # DATE: 2021/8/12
 # Author: clarkmonkey@163.com
 
-from typing import NoReturn, Optional
-from time import time as current
+from typing import List, Tuple, Any
+
+import pytest
 
 from cache3 import SimpleCache
 
+many_pair: List[Tuple[Any, ...]] = [
+    ('object', object(), 'tag3'),    # instance value
+    ('type', int, 'tag3'),    # type value
+    ('callable', print, 'tag3'),    # callable value
+    ('list', list((1, 2, 3)), 'tag3'),    # list value
+    ('generator', range(10), 'tag3'),    # list value
+]
+params = pytest.mark.parametrize
 
-class TestBaseMethod:
-
-    def setup_class(self) -> NoReturn:
-        self.cache = SimpleCache('test1', 60)
-
-    def test_set_and_set(self) -> NoReturn:
-        self.cache.set('name', 'venus')
-        assert self.cache.get('name') == 'venus'
-
-    def get_expire(self, key: str) -> Optional[float]:
-        info = self.cache.inspect(key)
-        if info and 'expire' in info:
-            return info['expire']
-
-    def test_touch(self) -> NoReturn:
-        self.cache.set('name', 'venus', 10)
-        self.cache.touch('name', 20)
-        expire = self.get_expire('name')
-        assert current() + expire - 20 + 0.1 > current()
-
-    def test_ex_set(self) -> NoReturn:
-        assert self.cache.ex_set('key', 'v')
-        assert not self.cache.ex_set('key', 'v')
+cache = SimpleCache()
 
 
+def setup_function():
+    cache.clear()
+
+
+# api >>> clear
+def test_clear(data: List[Tuple[Any, ...]] = many_pair):
+    for key, value, tag in data[::-1]:
+        cache.set(key=key, value=value, tag=tag)
+    assert len(cache._cache) != 0
+    cache.clear()
+    assert len(cache._cache) == 0
+
+
+# api >>> ex_set
+@params('key, value, tag', many_pair)
+def test_ex_set(key, value, tag):
+
+    assert cache.ex_set(key, value, tag=tag)
+    assert not cache.ex_set(key, value, tag=tag)
+    assert cache.delete(key, tag=tag)
+    assert cache.ex_set(key, value, tag=tag)
+
+
+# api >>> get
+@params('key, value, tag', many_pair)
+def test_get(key, value, tag):
+
+    assert cache.set(key, value, tag=tag)
+    assert cache.get(key, tag=tag)
+    cache.delete(key, tag=tag)
+    assert not cache.get(key)
+
+
+# api >>> lru_evict TODO
+
+
+if __name__ == '__main__':
+    pytest.main(["-s", __file__])

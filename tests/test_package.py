@@ -11,7 +11,9 @@ def test_package() -> NoReturn:
 
     import cache3
     assert cache3.__doc__ == "A safe and light Python cache library."
+    assert cache3.__author__ == "clarkmonkey@163.com"
+    assert cache3.__name__ == "Cache3"
 
 
 if __name__ == '__main__':
-    pytest.main()
+    pytest.main(["-s", __file__])

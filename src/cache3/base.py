@@ -138,13 +138,17 @@ class BaseCache:
         as much as possible. At the same time, subclasses typically
         override the method to generate a specific key.
         """
+        if ':' in tag:
+            raise ValueError(
+                "The ':' is not expected in tag."
+            )
 
         return '%s:%s' % (key, tag)
 
     @staticmethod
     def _get_key_tag(serial_key: str) -> List[str]:
         """ extract key and tag from serialize key """
-        return serial_key.split(':')
+        return serial_key.rsplit(':', 1)
 
     def validate_key(self, key: str) -> Tuple[Optional[str], bool]:
         """ The incoming key is validated to fit the logic of the
@@ -204,7 +208,6 @@ class BaseCache:
 
         By default, return directly to value doing nothing.
         """
-
         return dump
 
     def incr(self, key: str, delta: int = 1, tag: TG = DEFAULT_TAG) -> Number:
