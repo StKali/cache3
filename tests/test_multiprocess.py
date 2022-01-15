@@ -12,7 +12,7 @@ from cache3 import SafeCache, DiskCache
 
 
 def generator():
-    for _ in range(random.randint(10, 20)):
+    for _ in range(random.randint(4, 8)):
         threads: int = random.randint(8, 32)
         yield threads, [random.randint(100, 1000) for _ in range(threads)]
 
