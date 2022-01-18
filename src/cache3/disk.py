@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 # DATE: 2021/9/15
 # Author: clarkmonkey@163.com
-# import json
 
 import pickle
 
@@ -21,7 +20,7 @@ from cache3.setting import (
 from cache3.validate import DirectoryValidate
 
 try:
-    import cjson as json
+    import ujson as json
 except ImportError:
     import json
 
