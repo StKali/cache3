@@ -40,7 +40,6 @@ class BaseApi:
         self.cache.clear()
         assert len(cache._cache) == 0
 
-
     # api >>> ex_set
     @params('key, value, tag', many_pair)
     def test_ex_set(self, key, value, tag):
@@ -50,7 +49,6 @@ class BaseApi:
         assert self.cache.delete(key, tag=tag)
         assert self.cache.ex_set(key, value, tag=tag)
 
-
     # api >>> get
     @params('key, value, tag', many_pair)
     def test_get(self, key, value, tag):
@@ -59,6 +57,12 @@ class BaseApi:
         assert self.cache.get(key, tag=tag)
         self.cache.delete(key, tag=tag)
         assert not self.cache.get(key)
+
+    # api >>> set
+    @params('key, value, tag', many_pair)
+    def test_set(self, key, value, tag):
+        with pytest.raises(ValueError, match="The ':' is not expected in tag." ):
+            self.cache.set(key, value, tag='prefix:invalid!')
 
 
 class TestSafeCache(BaseApi):

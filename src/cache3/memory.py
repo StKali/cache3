@@ -3,11 +3,10 @@
 # DATE: 2021/7/24
 # Author: clarkmonkey@163.com
 
-import doctest
 from collections import OrderedDict
 from threading import Lock
 from time import time as current
-from typing import Dict, Any, Type, Union, Optional, NoReturn, Iterator, Tuple
+from typing import Dict, Any, Type, Union, Optional, NoReturn, Tuple, List
 
 from cache3 import BaseCache
 from cache3.utils import NullContext
@@ -37,6 +36,13 @@ class SimpleCache(BaseCache):
     >>> cache.set('gender', 'male', 0)
     True
     >>> cache.get('gender')
+
+    Simple encapsulation of ``OrderedDict``, so it has a performance similar
+    to that of a ``dict``, at the same time, it requirements for keys and
+    values are also relatively loose.
+
+    It is entirely implemented by memory, so use the required control capacity
+    and expiration time to avoid wast memory.
     """
 
     LOCK = NullContext
@@ -45,84 +51,97 @@ class SimpleCache(BaseCache):
         super(SimpleCache, self).__init__(*args, **kwargs)
 
         # Attributes _name, _timeout from validate.
-        self._cache: OrderedDict[str, Any] = _caches.setdefault(self._name, OrderedDict())
-        self._expire_info: Dict[str, Any] = _expire_info.setdefault(self._name, {})
-        self._lock: LK = _locks.setdefault(self._name, self.LOCK())
+        self._cache: OrderedDict[str, Any] = _caches.setdefault(
+            self.name, OrderedDict()
+        )
+        self._expire_info: Dict[str, Any] = _expire_info.setdefault(self.name, {})
+        self._lock: LK = _locks.setdefault(self.name, self.LOCK())
 
-    def set(self, key: Any, value: Any, timeout: Number = DEFAULT_TIMEOUT,
-            tag: TG = DEFAULT_TAG) -> bool:
-        key: str = self.make_and_validate_key(key, tag=tag)
-        value: Any = self.serialize(value)
+    def set(
+            self, key: Any, value: Any, timeout: Number = DEFAULT_TIMEOUT,
+            tag: TG = DEFAULT_TAG
+    ) -> bool:
+        store_key: str = self.store_key(key, tag=tag)
+        serial_value: Any = self.serialize(value)
         with self._lock:
-            return self._set(key, value, timeout)
+            return self._set(store_key, serial_value, timeout)
 
     def get(self, key: str, default: Any = None, tag: TG = DEFAULT_TAG) -> Any:
 
-        key: str = self.make_and_validate_key(key, tag=tag)
+        store_key: str = self.store_key(key, tag=tag)
         with self._lock:
-            if self._has_expired(key):
-                self._delete(key)
+            if self._has_expired(store_key):
+                self._delete(store_key)
                 return default
-            value: Any = self._cache[key]
-            self._cache.move_to_end(key, last=False)
-        return self.deserialize(value)
+            value: Any = self.deserialize(self._cache[store_key])
+            self._cache.move_to_end(store_key, last=False)
+        return value
 
-    def ex_set(self, key: str, value: Any, timeout: float = DEFAULT_TIMEOUT,
-               tag: Optional[str] = DEFAULT_TAG) -> bool:
+    def ex_set(
+            self, key: str, value: Any, timeout: float = DEFAULT_TIMEOUT,
+            tag: Optional[str] = DEFAULT_TAG
+    ) -> bool:
+        """ Realize the mutually exclusive operation of data through thread lock.
+        but whether the mutex takes effect depends on the lock type.
+        """
 
-        key: str = self.make_and_validate_key(key, tag=tag)
-        value: Any = self.serialize(value)
+        store_key: str = self.store_key(key, tag=tag)
+        serial_value: Any = self.serialize(value)
 
         with self._lock:
-            if self._has_expired(key):
-                self._set(key, value, timeout)
+            if self._has_expired(store_key):
+                self._set(store_key, serial_value, timeout)
                 return True
             return False
 
     def touch(self, key: str, timeout: Number, tag: TG = DEFAULT_TAG) -> bool:
-
-        key: str = self.make_and_validate_key(key, tag=tag)
+        """ Renew the key. When the key does not exist, false will be returned """
+        store_key: str = self.store_key(key, tag=tag)
         with self._lock:
-            if self._has_expired(key):
+            if self._has_expired(store_key):
                 return False
-            self._expire_info[key] = self.get_backend_timeout(timeout)
+            self._expire_info[store_key] = self.get_backend_timeout(timeout)
             return True
 
     def delete(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
 
-        key: str = self.make_and_validate_key(key, tag=tag)
+        store_key: str = self.store_key(key, tag=tag)
         with self._lock:
-            return self._delete(key)
+            return self._delete(store_key)
 
     def inspect(self, key: str, tag: TG = DEFAULT_TAG) -> Optional[Dict[str, Any]]:
-
-        serial_key: str = self.make_and_validate_key(key, tag)
-        if not self._has_expired(serial_key):
+        """ Get the details of the key value include stored key and
+        serialized value.
+        """
+        store_key: str = self.store_key(key, tag)
+        if not self._has_expired(store_key):
             return {
                 'key': key,
-                'value': self._cache[serial_key],
-                'expire': self._expire_info[serial_key]
+                'store_key': store_key,
+                'store_value': self._cache[store_key],
+                'value': self.deserialize(self._cache[store_key]),
+                'expire': self._expire_info[store_key]
             }
 
     def incr(self, key: str, delta: int = 1, tag: TG = DEFAULT_TAG) -> Number:
-
-        key: str = self.make_and_validate_key(key, tag=tag)
+        """ Will throed ValueError when the key is not existed. """
+        store_key: str = self.store_key(key, tag=tag)
         with self._lock:
-            if self._has_expired(key):
-                self._delete(key)
+            if self._has_expired(store_key):
+                self._delete(store_key)
                 raise ValueError("Key '%s' not found" % key)
-            value: Any = self.deserialize(self._cache[key])
-            new_value: int = self.deserialize(value + delta)
-            self._cache[key] = new_value
-            self._cache.move_to_end(key, last=False)
-        return new_value
+            value: Any = self.deserialize(self._cache[store_key])
+            serial_value: int = self.serialize(value + delta)
+            self._cache[store_key] = serial_value
+            self._cache.move_to_end(store_key, last=False)
+        return serial_value
 
     def has_key(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
 
-        key: str = self.make_and_validate_key(key, tag=tag)
+        store_key: str = self.store_key(key, tag=tag)
         with self._lock:
-            if self._has_expired(key):
-                self._delete(key)
+            if self._has_expired(store_key):
+                self._delete(store_key)
                 return False
             return True
 
@@ -132,42 +151,58 @@ class SimpleCache(BaseCache):
             self._expire_info.clear()
         return True
 
+    def get_current_size(self) -> int:
+        return len(self._cache)
+
     def lru_evict(self) -> NoReturn:
-        if self._cull_size == 0:
+        if self.cull_size == 0:
             self._cache.clear()
             self._expire_info.clear()
         else:
-            count = len(self._cache) // self._cull_size
+            count = len(self._cache) // self.cull_size
             for i in range(count):
-                key, _ = self._cache.popitem()
-                del self._expire_info[key]
+                store_key, _ = self._cache.popitem()
+                del self._expire_info[store_key]
 
-    def _has_expired(self, key: str) -> bool:
-        exp: float = self._expire_info.get(key, -1.)
+    @staticmethod
+    def store_key(key: Any, tag: Optional[str]) -> str:
+
+        if ':' in tag:
+            raise ValueError(
+                "The ':' is not expected in tag."
+            )
+        return '%s:%s' % (key, tag)
+
+    @staticmethod
+    def restore_key(store_key: str) -> List[str]:
+        return store_key.rsplit(':', 1)
+
+    def _has_expired(self, store_key: str) -> bool:
+        exp: float = self._expire_info.get(store_key, -1.)
         return exp is not None and exp <= current()
 
-    def _delete(self, key: str) -> bool:
+    def _delete(self, store_key: str) -> bool:
         try:
-            del self._cache[key]
-            del self._expire_info[key]
+            del self._cache[store_key]
+            del self._expire_info[store_key]
         except KeyError:
             return False
         return True
 
-    def _set(self, key: str, value: Any, timeout=DEFAULT_TIMEOUT) -> bool:
+    def _set(self, store_key: str, value: Any, timeout=DEFAULT_TIMEOUT) -> bool:
 
-        if self._timeout and len(self._cache) >= self._max_size:
+        if self.timeout and len(self) >= self.max_size:
             self.evictor()
-        self._cache[key] = value
-        self._cache.move_to_end(key, last=False)
-        self._expire_info[key] = self.get_backend_timeout(timeout)
+        self._cache[store_key] = value
+        self._cache.move_to_end(store_key, last=False)
+        self._expire_info[store_key] = self.get_backend_timeout(timeout)
         return True
 
     def __iter__(self) -> Tuple[Any, ...]:
-        for serial_key in reversed(self._cache.keys()):
-            if not self._has_expired(serial_key):
-                key, tag = self._get_key_tag(serial_key)
-                yield (key, self._cache[serial_key], tag)
+        for store_key in reversed(self._cache.keys()):
+            if not self._has_expired(store_key):
+                key, tag = self.restore_key(store_key)
+                yield key, self.deserialize(self._cache[store_key]), tag
 
     __delitem__ = delete
     __getitem__ = get
@@ -178,7 +213,3 @@ class SimpleCache(BaseCache):
 class SafeCache(SimpleCache):
 
     LOCK = Lock
-
-
-if __name__ == '__main__':
-    doctest.testmod()

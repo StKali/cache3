@@ -7,8 +7,7 @@ import multiprocessing
 
 import pytest
 
-from cache3 import SafeCache, DiskCache
-# from diskcache import Cache as DiskCache
+from cache3 import SafeCache, SimpleDiskCache, DiskCache, JsonDiskCache
 
 
 def generator():
@@ -26,6 +25,7 @@ class BaseThreads:
 
     def setup(self):
         self.cache = self.CLASS()
+        self.cache.clear()
         self.cache['count'] = 0
 
     @pytest.mark.parametrize('threads, args', multi_cases)
@@ -40,7 +40,16 @@ class BaseThreads:
             self.cache.incr('count')
 
 
-class TestDiskCache(BaseThreads):
+class TestMultiProcessSimpleDiskCache(BaseThreads):
+
+    CLASS = SimpleDiskCache
+
+
+class TestMultiProcessDiskCache(BaseThreads):
 
     CLASS = DiskCache
 
+
+class TestMultiProcessJsonDiskCache(BaseThreads):
+
+    CLASS = JsonDiskCache

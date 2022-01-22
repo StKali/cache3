@@ -4,9 +4,12 @@
 # Author: clarkmonkey@163.com
 
 import functools
+import pickle
 import warnings
 from time import time as current
-from typing import Any, Type, Optional, Union, Dict, Tuple, Callable, NoReturn, List, Iterator
+from typing import (
+    Any, Type, Optional, Union, Dict, Callable, NoReturn, List, Iterator
+)
 
 from cache3.utils import empty
 from cache3.setting import (
@@ -16,7 +19,13 @@ from cache3.setting import (
 )
 from cache3.validate import NumberValidate, StringValidate, EnumerateValidate
 
+try:
+    import ujson as json
+except ImportError:
+    import json
+
 Number: Type = Union[int, float]
+Time = float
 TG: Type = Optional[str]
 
 
@@ -31,6 +40,16 @@ class InvalidCacheKey(ValueError):
 class BaseCache:
     """ A base class that specifies the API that caching
     must implement and some default implementations.
+
+    The processing logic of cache keys and values is as follows：
+
+        key:
+            store(key)         ->  store_key
+            restore(store_key) ->  key
+
+        value
+            serialize(value)          -> serial_value
+            deserialize(serial_value) -> value
     """
 
     name: str = StringValidate(minsize=1, maxsize=MAX_KEY_LENGTH)
@@ -50,7 +69,7 @@ class BaseCache:
         self.timeout: Number = timeout
         self.max_size: int = max_size
         self.evict: str = DEFAULT_EVICT
-        self.cull_size: int = 10
+        self.cull_size: int = DEFAULT_CULL_SIZE
         self._kwargs: Dict[str, Any] = kwargs
 
     def config(self, **kwargs) -> NoReturn:
@@ -130,78 +149,43 @@ class BaseCache:
             'subclasses of BaseCache must provide a inspect() method'
         )
 
-    def make_key(self, key: str, tag: Optional[str]) -> str:
-        """Default function to generate keys.
+    @staticmethod
+    def store_key(key: Any, tag: Optional[str]) -> str:
+        """ Default function to generate keys.
 
         Construct the key used by all other methods. By default,
         the key will be converted to a unified string format
         as much as possible. At the same time, subclasses typically
         override the method to generate a specific key.
         """
-        if ':' in tag:
-            raise ValueError(
-                "The ':' is not expected in tag."
-            )
-
         return '%s:%s' % (key, tag)
 
     @staticmethod
-    def _get_key_tag(serial_key: str) -> List[str]:
+    def restore_key(store_key: str) -> List[str]:
         """ extract key and tag from serialize key """
-        return serial_key.rsplit(':', 1)
+        return store_key.rsplit(':', 1)
 
-    def validate_key(self, key: str) -> Tuple[Optional[str], bool]:
-        """ The incoming key is validated to fit the logic of the
-        backend storage. It is always closely related to ``make_key(...)``
-
-        By default, it will check the type and length.
-        """
-
-        if not isinstance(key, str):
-            return (
-                'The key must be a string (%s is %s)'
-                % (key, type(key).__name__), False
-            )
-
-        if len(key) > MAX_KEY_LENGTH:
-            warnings.warn(
-                'The key is too long( > %s), which can cause '
-                'unnecessary waste of resources and risk: %s...%s.'
-                % (MAX_KEY_LENGTH, key[:10], key[-10:]),
-                CacheKeyWarning
-            )
-        return None, True
-
-    def make_and_validate_key(self, key: str, tag: Optional[str] = None) -> str:
-        """ Validate keys and convert them into a friendlier format for storing
-        key-value pairs.
-
-        Returns a friendlier format key if key is validated, thrown ``InvalidCacheKey``
-        otherwise.
-        """
-
-        key: str = self.make_key(key, tag)
-        msg, validated = self.validate_key(key)
-        if validated:
-            return key
-        raise InvalidCacheKey(msg)
-
-    def get_backend_timeout(self, timeout=DEFAULT_TIMEOUT) -> Optional[float]:
+    def get_backend_timeout(
+            self, timeout: float = DEFAULT_TIMEOUT, now: Optional[Time] = None
+    ) -> Optional[float]:
         """ Return the timeout value usable by this backend based upon the
         provided timeout.
         """
         if timeout == DEFAULT_TIMEOUT:
-            timeout = self._timeout
+            timeout = self.timeout
+        if now is None:
+            now: Time = current()
+        return None if timeout is None else now + timeout
 
-        return None if timeout is None else current() + timeout
-
-    def serialize(self, value: Any, *args, **kwargs) -> Any:
+    @staticmethod
+    def serialize(value: Any, *args, **kwargs) -> Any:
         """ Serialize the value for easy backend storage.
         By default, return directly to value doing nothing.
         """
         return value
 
-    def deserialize(self, dump: Any, *args, **kwargs) -> Any:
+    @staticmethod
+    def deserialize(dump: Any, *args, **kwargs) -> Any:
         """ Restores the value returned by the backend to be consistent
         with when deposited. Usually it is always the opposite of the
         ``serialize(...)`` method.
@@ -274,11 +258,11 @@ class BaseCache:
         warning otherwise.
         """
 
-        evictor: Callable = getattr(self, self._evict, empty)
+        evictor: Callable = getattr(self, self.evict, empty)
         if evictor is empty:
             warnings.warn(
                 "Not found '%s' evict method, it will cause the"
-                "cache to grow without limit." % self._evict,
+                "cache to grow without limit." % self.evict,
                 RuntimeWarning
             )
             # Just to return a callable object ~.
@@ -295,7 +279,7 @@ class BaseCache:
 
     def __repr__(self) -> str:
         return "<%s '%s' timeout:%.2f>" % (
-            self.__class__.__name__, self._name, self._timeout
+            self.__class__.__name__, self.name, self.timeout
         )
 
     def __iter__(self) -> Iterator:
@@ -303,6 +287,48 @@ class BaseCache:
             'subclasses of BaseCache must provide a __iter__() method.'
         )
 
+    def get_current_size(self) -> int:
+        raise NotImplementedError(
+            'subclasses of BaseCache must provide a get_current_size() method.'
+        )
+
+    def __len__(self) -> int:
+        return self.get_current_size()
+
     __delitem__ = delete
     __getitem__ = get
     __setitem__ = set
+
+
+class JSONMixin:
+
+    @staticmethod
+    def deserialize(dump: Any, *args, **kwargs) -> Any:
+        if isinstance(dump, (int, float, bytes)):
+            return dump
+        return json.loads(dump)
+
+    @staticmethod
+    def serialize(value: Any, *args, **kwargs) -> Any:
+        if isinstance(value, (int, float, bytes)):
+            return value
+        return json.dumps(value)
+
+
+class PickleMixin:
+
+    @staticmethod
+    def deserialize(dump: Any, *args, **kwargs) -> Any:
+        """ In order to save overhead, it is more important to implement incr
+        in SQLite layer """
+
+        if isinstance(dump, (int, float, str)):
+            return dump
+        return pickle.loads(dump)
+
+    @staticmethod
+    def serialize(value: Any, *args, **kwargs) -> Any:
+        if isinstance(value, (int, float, str)):
+            return value
+        return pickle.dumps(value)
+

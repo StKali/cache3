@@ -11,7 +11,10 @@ from cache3 import SafeCache
 
 
 def rand_string(_min, _max) -> str:
-    return ''.join(random.choice(printable) for _ in range(random.randint(_min, _max)))
+    return ''.join(
+        random.choice(printable) for _ in
+        range(random.randint(_min, _max))
+    )
 
 
 def rand_strings(count: int, _min: int = 4, _max: int = 16) -> Generator:
@@ -35,12 +38,20 @@ def simple_safe_ex_set(cache: SafeCache, key, value):
 
 
 def test_safe_set(benchmark):
-    benchmark.pedantic(simple_safe_set, args=(cache, 'key', 'value'), rounds=10000)
+    benchmark.pedantic(
+        simple_safe_set, args=(cache, 'key', 'value'), rounds=10000
+    )
 
 
 def test_safe_get(benchmark):
-    benchmark.pedantic(simple_safe_get, args=(cache, rand_string(2, 16), 'value'), rounds=10000)
+    benchmark.pedantic(
+        simple_safe_get, args=(cache, rand_string(2, 16), 'value'),
+        rounds=10000
+    )
 
 
 def test_safe_ex_set(benchmark):
-    benchmark.pedantic(simple_safe_ex_set, args=(cache, rand_string(2, 16), 'value'), rounds=10000)
+    benchmark.pedantic(
+        simple_safe_ex_set, args=(cache, rand_string(2, 16), 'value'),
+        rounds=10000
+    )

@@ -11,7 +11,10 @@ from cache3 import DiskCache
 
 
 def rand_string(_min, _max) -> str:
-    return ''.join(random.choice(printable) for _ in range(random.randint(_min, _max)))
+    return ''.join(
+        random.choice(printable) for _ in
+        range(random.randint(_min, _max))
+    )
 
 
 def rand_strings(count: int, _min: int = 4, _max: int = 16) -> Generator:
@@ -35,12 +38,20 @@ def simple_disk_ex_set(cache: DiskCache, key, value):
 
 
 def test_disk_set(benchmark):
-    benchmark.pedantic(simple_disk_set, args=(cache, 'key', 'value'), rounds=10000)
+    benchmark.pedantic(
+        simple_disk_set, args=(cache, 'key', 'value'), rounds=10000
+    )
 
 
 def test_disk_get(benchmark):
-    benchmark.pedantic(simple_disk_get, args=(cache, rand_string(2, 16), 'value'), rounds=10000)
+    benchmark.pedantic(
+        simple_disk_get, args=(cache, rand_string(2, 16), 'value'),
+        rounds=10000
+    )
 
 
 def test_disk_ex_set(benchmark):
-    benchmark.pedantic(simple_disk_ex_set, args=(cache, rand_string(2, 16), 'value'), rounds=10000)
+    benchmark.pedantic(
+        simple_disk_ex_set, args=(cache, rand_string(2, 16), 'value'),
+        rounds=10000
+    )

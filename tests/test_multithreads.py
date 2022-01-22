@@ -8,7 +8,7 @@ import threading
 
 import pytest
 
-from cache3 import SafeCache, DiskCache
+from cache3 import SafeCache, DiskCache, SimpleDiskCache, JsonDiskCache
 
 
 def generator():
@@ -26,6 +26,7 @@ class BaseThreads:
 
     def setup(self):
         self.cache = self.CLASS()
+        self.cache.clear()
         self.cache['count'] = 0
 
     @pytest.mark.parametrize('threads, args', multi_cases)
@@ -45,7 +46,17 @@ class TestThreadsSafeCache(BaseThreads):
     CLASS = SafeCache
 
 
-class TestThreadsDiskCache(BaseThreads):
+class TestMultiThreadsSimpleDiskCache(BaseThreads):
+
+    CLASS = SimpleDiskCache
+
+
+class TestMultiThreadsDiskCache(BaseThreads):
 
     CLASS = DiskCache
+
+
+class TestMultiThreadsJsonDiskCache(BaseThreads):
+
+    CLASS = JsonDiskCache
 

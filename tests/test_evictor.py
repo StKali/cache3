@@ -6,58 +6,50 @@
 from typing import List
 
 import pytest
-from cache3 import BaseCache, SimpleCache, SafeCache, DiskCache
-
+from cache3 import BaseCache, SimpleCache, SafeCache, DiskCache, SimpleDiskCache, JsonDiskCache
 
 MAX_SIZE_CASES: List[int] = [
     20, 30, 40, 50, 60
 ]
 
-import logging
+
 class BaseCase:
 
-    CLASS = BaseCache
+    klass = BaseCache
 
     @pytest.fixture()
     def cache(self, request):
         max_size = request.param
-        instance = self.CLASS(max_size=max_size)
-        try:
-            yield instance
-        except Exception as exc:
-            logging.exception(exc)
+        instance = self.klass(max_size=max_size)
+        yield instance
         instance.clear()
-        if isinstance(instance, DiskCache):
-            instance.sqlite.destroy()
 
     @pytest.fixture()
     def zero_cache(self, request):
         max_size = request.param
-        instance = self.CLASS(max_size=max_size)
+        instance = self.klass(max_size=max_size)
         instance._cull_size = 0
         yield instance
         instance.clear()
-        if isinstance(instance, DiskCache):
-            instance.sqlite.destroy()
 
     @pytest.mark.parametrize('cache', MAX_SIZE_CASES, indirect=True)
     def test_cull(self, cache: BaseCache):
 
-        for i in range(cache._max_size + 2):
+        for i in range(cache.max_size + 2):
             cache[str(i)] = i
 
     @pytest.mark.parametrize('zero_cache', MAX_SIZE_CASES, indirect=True)
     def test_zero_cull(self, zero_cache: BaseCache):
 
-        for i in range(zero_cache._max_size + 2):
+        for i in range(zero_cache.max_size + 2):
             zero_cache[str(i)] = i
 
-        assert len(zero_cache._cache) <= zero_cache._max_size
+        assert len(zero_cache) <= zero_cache.max_size
 
 
 class TestSimpleCache(BaseCase):
 
-    CLASS = SimpleCache
+    klass = SimpleCache
 
 
 class TestSafeCache(BaseCache):
@@ -65,19 +57,21 @@ class TestSafeCache(BaseCache):
     CLASS = SafeCache
 
 
-# class TestDiskCache(DiskCache):
-#
-#     CLASS = DiskCache()
+class TestSimpleDiskCacheEvict(BaseCase):
+
+    klass = SimpleDiskCache
 
 
-def test_lru_evict():
-    """"""
+class TestDiskCacheEvict(BaseCase):
+
+    klass = DiskCache
 
 
-def test_fifo_evict():
-    """"""
+class TestJsonDiskCacheEvict(BaseCase):
+
+    klass = JsonDiskCache
 
 
-def test_lfu_evict():
-    """"""
+if __name__ == '__main__':
+    pytest.main(['-s', __file__])
 

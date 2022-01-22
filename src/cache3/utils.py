@@ -21,11 +21,8 @@ class NullContext(AbstractContextManager):
         # Perform operation, using optional_cm if condition is True
     """
 
-    def __init__(self, enter_result: Optional[Any] = None) -> None:
-        self.enter_result: Optional[Any] = enter_result
-
     def __enter__(self) -> Any:
-        return self.enter_result
+        """ empty method ... """
 
     def __exit__(self, *exc: Any) -> NoReturn:
-        pass
+        """ empty method ... """

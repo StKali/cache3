@@ -11,7 +11,10 @@ from cache3 import SimpleCache
 
 
 def rand_string(_min, _max) -> str:
-    return ''.join(random.choice(printable) for _ in range(random.randint(_min, _max)))
+    return ''.join(
+        random.choice(printable) for _ in
+        range(random.randint(_min, _max))
+    )
 
 
 def rand_strings(count: int, _min: int = 4, _max: int = 16) -> Generator:
@@ -35,12 +38,18 @@ def simple_ex_set(cache: SimpleCache, key, value):
 
 
 def test_set(benchmark):
-    benchmark.pedantic(simple_set, args=(cache, 'key', 'value'), rounds=10000)
+    benchmark.pedantic(
+        simple_set, args=(cache, 'key', 'value'), rounds=10000
+    )
 
 
 def test_get(benchmark):
-    benchmark.pedantic(simple_get, args=(cache, 'key', 'value'), rounds=10000)
+    benchmark.pedantic(
+        simple_get, args=(cache, 'key', 'value'), rounds=10000
+    )
 
 
 def test_ex_set(benchmark):
-    benchmark.pedantic(simple_ex_set, args=(cache, 'key', 'value'), rounds=10000)
+    benchmark.pedantic(
+        simple_ex_set, args=(cache, 'key', 'value'), rounds=10000
+    )

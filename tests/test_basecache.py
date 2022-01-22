@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 # DATE: 2021/8/7
 # Author: clarkmonkey@163.com
+
 from types import MethodType
 from typing import Callable
 import pytest
 from cache3 import BaseCache
 from cache3.setting import (
     DEFAULT_TIMEOUT, DEFAULT_EVICT, DEFAULT_CULL_SIZE, DEFAULT_NAME, DEFAULT_MAX_SIZE,
-    MAX_KEY_LENGTH
 )
 
 params: Callable = pytest.mark.parametrize
@@ -24,7 +24,7 @@ def test_success_construct():
     assert default_cache.cull_size == DEFAULT_CULL_SIZE
 
 
-# api: __init__
+# api >>> __init__
 @params('evict, cull_size', [
     ('fifo_evict', 1000),
     ('lfu_evict', 20)
@@ -35,10 +35,12 @@ def test_config(evict: str, cull_size: int) -> None:
     assert cache.cull_size == cull_size
 
 
-# api: __iter__, clear, delete, ex_set, get, has_key, incr, inspect, set, touch,
+# api >>> __iter__, clear, delete, ex_set, get, has_key, incr, inspect,
+# set, touch, get_current_size
 @params('method', [
     cache.__iter__, cache.clear, cache.delete, cache.ex_set, cache.get,
     cache.has_key, cache.incr, cache.inspect, cache.set, cache.touch,
+    cache.get_current_size
 ])
 def test_implemented_method(method) -> None:
     with pytest.raises(NotImplementedError):
@@ -51,41 +53,33 @@ def test_implemented_method(method) -> None:
         method()
 
 
-# api: __repr__
+# api >>> __repr__
 def test_repr_method():
     assert str(cache).startswith('<BaseCache')
 
 
-# api: make_key, _get_key_tag
+# api >>> store, restore
 @params('key, tag', [
     ('name', 'default'),
     ('name:default', '')
 ])
-def test_make_key_and_get_key_tag(key, tag):
-    serial_key: str = cache.make_key(key, tag)
-    assert cache._get_key_tag(serial_key) == [key, tag]
+def test_store_and_reversed(key, tag):
+    serial_key: str = cache.store_key(key, tag)
+    assert cache.restore_key(serial_key) == [key, tag]
 
 
-# api: validate_key
-def test_validate_key_type(key=1):
-    reason, boolean = cache.validate_key(key)
-    assert reason.startswith('The key must be a string')
-    assert not boolean
+# api: warning >>> evictor
+def test_evictor_no_method():
+    with pytest.warns(RuntimeWarning, match='Not found .* evict method'):
+        cache.evictor
 
 
-# api: validate_key
-def test_validate_key_length():
-    key = 'x' * (MAX_KEY_LENGTH + 1)
-    with pytest.warns(RuntimeWarning, match='key is too long'):
-        cache.validate_key(key)
-
-
-# api: make_and_validate_key
-def test_make_and_validate_key():
-    key = 1
-    cache.make_key = lambda x, y: x
-    with pytest.raises(ValueError, match='The key must be a string'):
-        cache.make_and_validate_key(key)
+# api: callable >>> evictor
+def test_evictor_not_callable():
+    cache.config(evict='lru_evict')
+    cache.lru_evict = None
+    with pytest.warns(RuntimeWarning, match='Invalid evict .*, It must a callable object.'):
+        cache.evictor
 
 
 if __name__ == '__main__':

@@ -55,20 +55,16 @@ class BaseCacheApi:
         for key, value, tag in data:
             self.cache.set(key=key, value=value, tag=tag)
 
-        result = []
-        for elem in self.cache:
-            assert isinstance(elem, tuple)
-            result.append(elem)
+        result = [elem for elem in self.cache]
         assert result == data
 
     # api >>> clear
-    # def test_clear(self, data: List[Tuple[Any, ...]] = many_pair):
-    #     for key, value, tag in data[::-1]:
-    #         self.cache.set(key=key, value=value, tag=tag)
-    #     assert len(self.cache._cache) != 0
-    #     self.cache.clear()
-    #     assert len(self.cache._cache) == 0
-
+    def test_clear(self, data: List[Tuple[Any, ...]] = many_pair):
+        for key, value, tag in data[::-1]:
+            self.cache.set(key=key, value=value, tag=tag)
+        assert len(self.cache) != 0
+        self.cache.clear()
+        assert len(self.cache) == 0
 
     # api >>> delete
     @params('key, value, tag', many_pair)
@@ -79,7 +75,6 @@ class BaseCacheApi:
         assert self.cache.delete(key, tag=tag)
         assert not self.cache.delete(key)   # return false if no specify tag
         assert not self.cache.has_key(key, tag=tag)
-
 
     # api >>> ex_set
     @params('key, value, tag', many_pair)
@@ -99,10 +94,38 @@ class BaseCacheApi:
         self.cache.delete(key, tag=tag)
         assert not self.cache.get(key)
 
+    # api >>> get_many
+    def test_get_many(self):
+        self.cache['a'] = 1
+        self.cache['b'] = 2
+        self.cache['c'] = 3
+        returns = self.cache.get_many(['a', 'b', 'c'])
+        assert len(returns) == 3
+        assert returns['a'] == 1
+        assert returns['b'] == 2
+        assert returns['c'] == 3
+
+    # api: success >>> memoize
+    def test_memoize(self):
+
+        @self.cache.memoize()
+        def add(count):
+            count += 1
+            return count
+
+        assert add(0) == add(234) == add(567) == add(8910) == 1
+
+    # api: invalid >>> memoize
+    def test_memoize_error(self):
+
+        with pytest.raises(TypeError) as exc:
+            @self.cache.memoize
+            def func():...
+            assert str(exc).startswith('Name cannot be callable')
+
 
     # api >>> has_key
     # Has been covered api
-
 
     # api:success >>> incr
     @params('key, value', [
@@ -132,6 +155,21 @@ class BaseCacheApi:
         with pytest.raises(TypeError, match=''):
             self.cache.incr(key)
 
+    # api: success >>> decr
+    @params('key, value', [
+        ('integer', 0),
+        ('float', 0.0)
+    ])
+    def test_decr(self, key, value) -> None:
+
+        self.cache[key] = value
+        for i in range(10):
+            self.cache.decr(key, delta=1)
+            value -= 1
+
+        assert self.cache[key] == value
+
+
     # api:timeout >>> incr
     def test_timeout_incr(self):
         key: str = 'count'
@@ -158,9 +196,6 @@ class BaseCacheApi:
         assert new_expire - expire > 100 - timeout - .2
         assert self.cache.touch(key, -1)
         assert not self.cache.touch(key, 1)
-
-
-    # api >>> lru_evict TODO
 
 
 class TestSimpleCacheApi(BaseCacheApi):
