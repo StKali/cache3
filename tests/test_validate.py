@@ -10,7 +10,7 @@ import pytest
 
 from cache3.validate import NumberValidate, StringValidate, DirectoryValidate, EnumerateValidate
 
-file: str = 'test'
+file: str = '.test'
 
 
 class Checker:

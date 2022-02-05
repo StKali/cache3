@@ -278,7 +278,7 @@ class BaseCache:
         return evictor
 
     def __repr__(self) -> str:
-        return "<%s '%s' timeout:%.2f>" % (
+        return "<%s name=%s timeout=%.2f>" % (
             self.__class__.__name__, self.name, self.timeout
         )
 

@@ -19,6 +19,7 @@ from cache3.setting import (
     DEFAULT_TIMEOUT, DEFAULT_TAG, DEFAULT_STORE, DEFAULT_SQLITE_TIMEOUT
 )
 from cache3.validate import DirectoryValidate
+from cache3.utils import cached_property
 
 try:
     import ujson as json
@@ -117,7 +118,7 @@ class SessionDescriptor:
             setattr(instance, self.private_name, value)
         return True
 
-    def __get__(self, instance, owner) -> Optional[Connection]:
+    def __get__(self, instance: 'SimpleDiskCache', owner) -> Optional[Connection]:
 
         local_pid: int = getattr(self.context, 'pid', None)
         pid: int = getpid()
@@ -125,9 +126,7 @@ class SessionDescriptor:
         if local_pid != pid:
             self._close()
             self.context.pid = pid
-
-        session: Connection = getattr(self.context, self.private_name, None)
-
+        session: Connection = getattr(self.context, instance.position, None)
         if session is None:
             configure: Dict[str, Any] = getattr(instance, 'configure')
             pragmas: Dict[str, Any] = getattr(instance, 'pragmas')
@@ -135,7 +134,7 @@ class SessionDescriptor:
                 **configure
             )
             self.config_session(session, pragmas)
-            setattr(self.context, self.private_name, session)
+            setattr(self.context, instance.position, session)
 
         return session
 
@@ -191,7 +190,7 @@ class SimpleDiskCache(BaseCache):
     session: SessionDescriptor = SessionDescriptor()
     directory: DirectoryValidate = DirectoryValidate()
 
-    def __init__(self, directory: Path = DEFAULT_STORE, *args, **kwargs) -> None:
+    def __init__(self, directory: PATH = DEFAULT_STORE, *args, **kwargs) -> None:
         super(SimpleDiskCache, self).__init__(*args, **kwargs)
         self.directory: Path = directory
         self._txn_id: Optional[int] = None
@@ -199,7 +198,7 @@ class SimpleDiskCache(BaseCache):
         self.kwargs: Dict[str, Any] = kwargs
 
         self.configure: Dict[str, Any] = {
-            'database': str(self.directory / self.name),
+            'database': self.position,
             'isolation_level': None,
             'timeout': DEFAULT_SQLITE_TIMEOUT,
         }
@@ -212,6 +211,10 @@ class SimpleDiskCache(BaseCache):
         )
         # Initialize cache table and statistics table
         self._make_cache_dependencies()
+
+    @cached_property
+    def position(self) -> str:
+        return str(self.directory / self.name)
 
     def set(self, key: str, value: Any, timeout: Number = DEFAULT_TIMEOUT,
             tag: TG = DEFAULT_TAG) -> bool:
@@ -550,6 +553,11 @@ class SimpleDiskCache(BaseCache):
             value: Any = self.deserialize(serial_value)
 
             yield key, value, tag
+
+    def __repr__(self) -> str:
+        return "<%s name=%s position=%s timeout=%.2f>" % (
+            self.__class__.__name__, self.name, self.position, self.timeout
+        )
 
     __delitem__ = delete
     __getitem__ = get
