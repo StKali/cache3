@@ -60,7 +60,7 @@ TABLES: Dict[str, Any] = {
 
         'schema': (
             'CREATE TABLE IF NOT EXISTS `cache`('
-            '`key` REAL NOT NULL,'
+            '`key` BLOB NOT NULL,'
             '`store` REAL NOT NULL,'
             '`expire` REAL NOT NULL,'
             '`access` REAL NOT NULL,'
@@ -223,27 +223,30 @@ class SimpleDiskCache(BaseCache):
 
         store_key: str = self.store_key(key, tag)
         serial_value: Any = self.serialize(value)
-        now: Time = current()
-        expire: Optional[Number] = self.get_backend_timeout(timeout, now)
         with self._transact() as sqlite:
-            success: bool = sqlite(
-                'INSERT OR REPLACE INTO `cache`('
-                '`key`, `store`, `expire`, `access`, '
-                '`access_count`, `tag`, `value`'
-                ') VALUES (?, ?, ?, ?, ?, ?, ?)',
-                (store_key, now, expire, now, 0, tag, serial_value)
-            ).rowcount == 1
-            if success:
-                self._add_count()
-                if len(self) > self.max_size:
-                    self.evictor()
-        return success
+            row = sqlite(
+                'SELECT `ROWID` '
+                'FROM `cache` '
+                'WHERE `key` = ? AND `tag` = ? ',
+                (store_key, tag)
+            ).fetchone()
+            if row:
+                (rowid,) = row
+                return self._update_line(rowid, serial_value, tag)
+            else:
+                if self._insert_line(store_key, tag, serial_value):
+                    self._add_count()
+                    if len(self) > self.max_size:
+                        self.evictor()
+                else:
+                    return False
+        return True
 
     def get(self, key: str, default: Any = None, tag: TG = DEFAULT_TAG) -> Any:
 
         store_key: str = self.store_key(key, tag)
         row: Tuple[Number, Any] = self.sqlite(
-            'SELECT `value` '
+            'SELECT `ROWID`, `value` '
             'FROM `cache` '
             'WHERE `key` = ? AND `tag` = ? '
             'AND (`expire` IS NULL OR `expire` > ?)',
@@ -252,7 +255,16 @@ class SimpleDiskCache(BaseCache):
 
         if not row:
             return default
-        return self.deserialize(row[0])
+        (rowid, serial_value) = row
+
+        # FIXME async
+        self.sqlite(
+            'UPDATE `cache` '
+            'SET `access_count` = `access_count` + 1 '
+            'WHERE ROWID = ?',
+            (rowid, )
+        )
+        return self.deserialize(serial_value)
 
     def _has_key(self, store_key: str, tag: TG = DEFAULT_TAG) -> bool:
 
@@ -531,6 +543,32 @@ class SimpleDiskCache(BaseCache):
                 'UPDATE `info` SET `count` = `count` - 1 '
                 'WHERE `ROWID` = 1'
             ).rowcount == 1
+
+    def _insert_line(self, store_key: Any, tag: str, serial_value: Any) -> bool:
+        now: Time = current()
+        expire: Time = self.get_backend_timeout(self.timeout, now)
+        return self.sqlite(
+            'INSERT INTO `cache`('
+            '`key`, `store`, `expire`, `access`, '
+            '`access_count`, `tag`, `value`'
+            ') VALUES (?, ?, ?, ?, ?, ?, ?)',
+            (store_key, now, expire, now, 0, tag, serial_value)
+        ).rowcount == 1
+
+    def _update_line(self, rowid: int, value: Any, tag: str) -> bool:
+        now: Time = current()
+        expire: Time = self.get_backend_timeout(self.timeout, now)
+        return self.sqlite(
+            'UPDATE `cache` SET '
+            '`store` = ?, '
+            '`expire` = ?, '
+            '`access` = ?,'
+            '`access_count` = ?, '
+            '`tag` = ?, '
+            '`value` = ? '
+            ' WHERE `rowid` = ?',
+            (now, expire, now, 0, tag, value, rowid)
+        ).rowcount == 1
 
     def __iter__(self) -> Iterator:
         """ This may take up a lot of memory, which needs special
