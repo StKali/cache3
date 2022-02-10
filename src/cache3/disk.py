@@ -31,6 +31,7 @@ TG: Type = Optional[str]
 Time: Type = Optional[float]
 PATH: Type = Union[Path, str]
 QY: Type = Callable[[Any, ...], Cursor]
+ROW: Type = Optional[Tuple[Any, ...]]
 
 # SQLite pragma configs
 PRAGMAS: Dict[str, Union[str, int]] = {
@@ -93,7 +94,7 @@ TABLES: Dict[str, Any] = {
 }
 
 
-def dict_factory(cursor: Cursor, row: Tuple) -> Dict:
+def dict_factory(cursor: Cursor, row: ROW) -> Dict:
     """ Format query result to dict. """
     d: dict = dict()
     for idx, col in enumerate(cursor.description):
@@ -224,7 +225,7 @@ class SimpleDiskCache(BaseCache):
         store_key: str = self.store_key(key, tag)
         serial_value: Any = self.serialize(value)
         with self._transact() as sqlite:
-            row = sqlite(
+            row: ROW = sqlite(
                 'SELECT `ROWID` '
                 'FROM `cache` '
                 'WHERE `key` = ? AND `tag` = ? ',
@@ -245,7 +246,7 @@ class SimpleDiskCache(BaseCache):
     def get(self, key: str, default: Any = None, tag: TG = DEFAULT_TAG) -> Any:
 
         store_key: str = self.store_key(key, tag)
-        row: Tuple[Number, Any] = self.sqlite(
+        row: ROW = self.sqlite(
             'SELECT `ROWID`, `value` '
             'FROM `cache` '
             'WHERE `key` = ? AND `tag` = ? '
@@ -284,23 +285,27 @@ class SimpleDiskCache(BaseCache):
         atomicity of operations """
 
         store_key: str = self.store_key(key, tag)
-        if self._has_key(store_key, tag):
-            return False
-
-        now: Time = current()
-        expire: Time = self.get_backend_timeout(timeout, now)
-        serial_value: Any = self.serialize(value)
         with self._transact() as sqlite:
-            success: bool = sqlite(
-                'INSERT OR REPLACE INTO `cache`( '
-                '`key`, `store`, `expire`, `access`, '
-                '`access_count`, `tag`, `value`'
-                ') VALUES (?, ?, ?, ?, ?, ?, ?)',
-                (store_key, now, expire, now, 0, tag, serial_value)
-            ).rowcount == 1
-            if success:
-                self._add_count()
-        return success
+            row: ROW = sqlite(
+                'SELECT `ROWID`, `expire` '
+                'FROM `cache` '
+                'WHERE `key` = ? '
+                'AND `tag` = ? ',
+                (store_key, tag)
+            ).fetchone()
+            if row:
+                (rowid, expire) = row
+                if expire > current():
+                    return False
+                return self._update_line(rowid, self.serialize(value), timeout, tag)
+            else:
+                if self._insert_line(store_key, self.serialize(value), timeout, tag):
+                    self._add_count()
+                    if len(self) > self.max_size:
+                        self.evictor()
+                else:
+                    return False
+        return True
 
     def get_many(self, keys: List[str], tag: TG = DEFAULT_TAG) -> Dict[str, Any]:
         """ There is a limitation on obtaining a group of key values.
