@@ -124,7 +124,7 @@ class SessionDescriptor:
         pid: int = getpid()
 
         if local_pid != pid:
-            self._close()
+            self._close(instance)
             self.context.pid = pid
         session: Connection = getattr(self.context, instance.position, None)
         if session is None:
@@ -138,13 +138,13 @@ class SessionDescriptor:
 
         return session
 
-    def _close(self) -> bool:
+    def _close(self, instance: 'SimpleDiskCache') -> bool:
         with self.lock:
-            session: Connection = getattr(self.context, self.private_name, None)
+            session: Connection = getattr(self.context, instance.position, None)
             if session is None:
                 return True
             session.close()
-            setattr(self.context, self.private_name, None)
+            setattr(self.context, instance.position, None)
         return True
 
     @staticmethod
@@ -168,8 +168,8 @@ class SessionDescriptor:
                     raise
                 sleep(0.001)
 
-    def __delete__(self, instance: object) -> bool:
-        return self._close()
+    def __delete__(self, instance: 'SimpleDiskCache') -> bool:
+        return self._close(instance)
 
 
 class SimpleDiskCache(BaseCache):
@@ -232,9 +232,9 @@ class SimpleDiskCache(BaseCache):
             ).fetchone()
             if row:
                 (rowid,) = row
-                return self._update_line(rowid, serial_value, tag)
+                return self._update_line(rowid, serial_value, timeout, tag)
             else:
-                if self._insert_line(store_key, tag, serial_value):
+                if self._insert_line(store_key, serial_value , timeout, tag):
                     self._add_count()
                     if len(self) > self.max_size:
                         self.evictor()
@@ -330,14 +330,14 @@ class SimpleDiskCache(BaseCache):
 
         store_key: str = self.store_key(key, tag)
         now: Time = current()
-        expire: Number = self.get_backend_timeout(timeout, now)
+        new_expire: Optional[Number] = self.get_backend_timeout(timeout, now)
         with self._transact() as sqlite:
             return sqlite(
                 'UPDATE `cache` SET `expire` = ? '
                 'WHERE `key` = ? '
                 'AND `tag` = ? '
                 'AND (`expire` IS NULL OR `expire` > ?)',
-                (expire, store_key, tag, now)
+                (new_expire, store_key, tag, now)
             ).rowcount == 1
 
     def delete(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
@@ -544,9 +544,9 @@ class SimpleDiskCache(BaseCache):
                 'WHERE `ROWID` = 1'
             ).rowcount == 1
 
-    def _insert_line(self, store_key: Any, tag: str, serial_value: Any) -> bool:
+    def _insert_line(self, store_key: Any, serial_value: Any, timeout: Time, tag: str) -> bool:
         now: Time = current()
-        expire: Time = self.get_backend_timeout(self.timeout, now)
+        expire: Time = self.get_backend_timeout(timeout, now)
         return self.sqlite(
             'INSERT INTO `cache`('
             '`key`, `store`, `expire`, `access`, '
@@ -555,9 +555,9 @@ class SimpleDiskCache(BaseCache):
             (store_key, now, expire, now, 0, tag, serial_value)
         ).rowcount == 1
 
-    def _update_line(self, rowid: int, value: Any, tag: str) -> bool:
+    def _update_line(self, rowid: int, serial_value: Any, timeout: Time, tag: str) -> bool:
         now: Time = current()
-        expire: Time = self.get_backend_timeout(self.timeout, now)
+        expire: Time = self.get_backend_timeout(timeout, now)
         return self.sqlite(
             'UPDATE `cache` SET '
             '`store` = ?, '
@@ -567,7 +567,7 @@ class SimpleDiskCache(BaseCache):
             '`tag` = ?, '
             '`value` = ? '
             ' WHERE `rowid` = ?',
-            (now, expire, now, 0, tag, value, rowid)
+            (now, expire, now, 0, tag, serial_value, rowid)
         ).rowcount == 1
 
     def __iter__(self) -> Iterator:
