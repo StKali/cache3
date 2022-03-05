@@ -61,8 +61,7 @@ class BaseApi:
     # api >>> set
     @params('key, value, tag', many_pair)
     def test_set(self, key, value, tag):
-        with pytest.raises(ValueError, match="The ':' is not expected in tag." ):
-            self.cache.set(key, value, tag='prefix:invalid!')
+        assert self.cache.set(key, value, tag=tag)
 
 
 class TestSafeCache(BaseApi):

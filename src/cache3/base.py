@@ -11,12 +11,12 @@ from typing import (
     Any, Type, Optional, Union, Dict, Callable, NoReturn, List, Iterator
 )
 
-from cache3.utils import empty
 from cache3.setting import (
     DEFAULT_TAG, DEFAULT_TIMEOUT, MAX_TIMEOUT, MIN_TIMEOUT, MAX_KEY_LENGTH,
     DEFAULT_NAME, DEFAULT_MAX_SIZE, DEFAULT_EVICT, DEFAULT_CULL_SIZE, EVICT_LFU,
     EVICT_FIFO, EVICT_LRU
 )
+from cache3.utils import empty
 from cache3.validate import NumberValidate, StringValidate, EnumerateValidate
 
 try:
@@ -30,7 +30,7 @@ TG: Type = Optional[str]
 
 
 class CacheKeyWarning(RuntimeWarning):
-    """ A warning that is thrown when the key is not legitimate """
+    """A warning that is thrown when the key is not legitimate """
 
 
 class InvalidCacheKey(ValueError):
@@ -51,6 +51,8 @@ class BaseCache:
             serialize(value)          -> serial_value
             deserialize(serial_value) -> value
     """
+
+    gap: str = '-'
 
     name: str = StringValidate(minsize=1, maxsize=MAX_KEY_LENGTH)
     timeout: Number = NumberValidate(minvalue=MIN_TIMEOUT, maxvalue=MAX_TIMEOUT)
@@ -149,8 +151,7 @@ class BaseCache:
             'subclasses of BaseCache must provide a inspect() method'
         )
 
-    @staticmethod
-    def store_key(key: Any, tag: Optional[str]) -> str:
+    def store_key(self, key: Any, tag: Optional[str]) -> str:
         """ Default function to generate keys.
 
         Construct the key used by all other methods. By default,
@@ -158,12 +159,11 @@ class BaseCache:
         as much as possible. At the same time, subclasses typically
         override the method to generate a specific key.
         """
-        return '%s:%s' % (key, tag)
+        return '%s%s%s' % (key, self.gap, tag)
 
-    @staticmethod
-    def restore_key(store_key: str) -> List[str]:
+    def restore_key(self, store_key: str) -> List[str]:
         """ extract key and tag from serialize key """
-        return store_key.rsplit(':', 1)
+        return store_key.rsplit(self.gap, 1)
 
     def get_backend_timeout(
             self, timeout: float = DEFAULT_TIMEOUT, now: Optional[Time] = None
@@ -236,8 +236,14 @@ class BaseCache:
 
         return decorator
 
+    def ttl(self, key: Any, tag: TG) -> Time:
+        """ Return the Time-to-live value. """
+        raise NotImplementedError(
+            'subclasses of BaseCache must provide a ttl() method'
+        )
+
     def clear(self) -> bool:
-        """ Empty all caches. """
+        """ clear all caches. """
         raise NotImplementedError(
             'subclasses of BaseCache must provide a clear() method'
         )

@@ -13,13 +13,13 @@ from typing import (
     NoReturn, Type, Union, Optional, Dict, Any, List, Tuple, Iterator, Callable
 )
 
-from cache3.base import PickleMixin, JSONMixin
 from cache3 import BaseCache
+from cache3.base import PickleMixin, JSONMixin
 from cache3.setting import (
     DEFAULT_TIMEOUT, DEFAULT_TAG, DEFAULT_STORE, DEFAULT_SQLITE_TIMEOUT
 )
-from cache3.validate import DirectoryValidate
 from cache3.utils import cached_property
+from cache3.validate import DirectoryValidate
 
 try:
     import ujson as json
@@ -51,8 +51,9 @@ TABLES: Dict[str, Any] = {
         # and easy to waste space and cpu. default behavior since the use
         # of AUTOINCREMENT requires additional work to be done as each row
         # is inserted and thus causes INSERTs to run a little slower.
-        # At the same time autoincrement will prevent SQLite from using primary
-        # key values that are less than the current value and are not used.
+        # At the same time autoincrement will prevent SQLite from using
+        # primary key values that are less than the current value and are
+        # not used.
         # docs: https://www.sqlite.org/autoinc.html
 
         # TODO: Generally, the cache does not need a very strict expiration time,
@@ -127,7 +128,7 @@ class SessionDescriptor:
         if local_pid != pid:
             self._close(instance)
             self.context.pid = pid
-        session: Connection = getattr(self.context, instance.position, None)
+        session: Connection = getattr(self.context, instance.location, None)
         if session is None:
             configure: Dict[str, Any] = getattr(instance, 'configure')
             pragmas: Dict[str, Any] = getattr(instance, 'pragmas')
@@ -135,17 +136,17 @@ class SessionDescriptor:
                 **configure
             )
             self.config_session(session, pragmas)
-            setattr(self.context, instance.position, session)
+            setattr(self.context, instance.location, session)
 
         return session
 
     def _close(self, instance: 'SimpleDiskCache') -> bool:
         with self.lock:
-            session: Connection = getattr(self.context, instance.position, None)
+            session: Connection = getattr(self.context, instance.location, None)
             if session is None:
                 return True
             session.close()
-            setattr(self.context, instance.position, None)
+            setattr(self.context, instance.location, None)
         return True
 
     @staticmethod
@@ -199,7 +200,7 @@ class SimpleDiskCache(BaseCache):
         self.kwargs: Dict[str, Any] = kwargs
 
         self.configure: Dict[str, Any] = {
-            'database': self.position,
+            'database': self.location,
             'isolation_level': None,
             'timeout': DEFAULT_SQLITE_TIMEOUT,
         }
@@ -214,13 +215,11 @@ class SimpleDiskCache(BaseCache):
         self._make_cache_dependencies()
 
     @cached_property
-    def position(self) -> str:
+    def location(self) -> str:
         return str(self.directory / self.name)
 
     def set(self, key: str, value: Any, timeout: Number = DEFAULT_TIMEOUT,
             tag: TG = DEFAULT_TAG) -> bool:
-        """ TODO: We need to find a more efficient strategy to implement this
-        method. """
 
         store_key: str = self.store_key(key, tag)
         serial_value: Any = self.serialize(value)
@@ -416,14 +415,23 @@ class SimpleDiskCache(BaseCache):
         store_key: str = self.store_key(key, tag)
         return self._has_key(store_key, tag)
 
-    def get_current_size(self) -> int:
-        (count,) = self.sqlite(
-            'SELECT `count` FROM `info` '
-            'WHERE `ROWID` = 1'
-        ).fetchone()
-        return count
+    def ttl(self, key: Any, tag: TG = DEFAULT_TAG) -> Time:
 
-    def clear(self) -> NoReturn:
+        store_key: str = self.store_key(key, tag)
+        row: ROW = self.sqlite(
+            'SELECT `expire` '
+            'FROM `cache` '
+            'WHERE `key` = ? '
+            'AND `tag` = ? '
+            'AND `expire` > ?',
+            (store_key, tag, current())
+        ).fetchone()
+        if not row:
+            return -1
+        (expire, ) = row
+        return expire - current()
+
+    def clear(self) -> bool:
         """ Delete all data and initialize the statistics table. """
 
         with self._transact() as sql:
@@ -440,13 +448,19 @@ class SimpleDiskCache(BaseCache):
                 'UPDATE `info` SET `count` = 0 '
                 'WHERE ROWID = 1'
             )
+        return True
 
-    @staticmethod
-    def store_key(key: Any, tag: Optional[str]) -> str:
+    def get_current_size(self) -> int:
+        (count,) = self.sqlite(
+            'SELECT `count` FROM `info` '
+            'WHERE `ROWID` = 1'
+        ).fetchone()
+        return count
+
+    def store_key(self, key: Any, tag: Optional[str]) -> str:
         return key
 
-    @staticmethod
-    def restore_key(serial_key: str) -> str:
+    def restore_key(self, serial_key: str) -> str:
         return serial_key
 
     def lru_evict(self) -> NoReturn:
@@ -598,8 +612,8 @@ class SimpleDiskCache(BaseCache):
             yield key, value, tag
 
     def __repr__(self) -> str:
-        return "<%s name=%s position=%s timeout=%.2f>" % (
-            self.__class__.__name__, self.name, self.position, self.timeout
+        return "<%s name=%s location=%s timeout=%.2f>" % (
+            self.__class__.__name__, self.name, self.location, self.timeout
         )
 
     __delitem__ = delete

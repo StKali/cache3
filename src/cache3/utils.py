@@ -4,7 +4,7 @@
 # Author: clarkmonkey@163.com
 
 from contextlib import AbstractContextManager
-from typing import Any, Optional, NoReturn
+from typing import Any, NoReturn
 
 # Compatible with multiple types.
 empty: Any = object()

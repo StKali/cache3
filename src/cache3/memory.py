@@ -9,8 +9,8 @@ from time import time as current
 from typing import Dict, Any, Type, Union, Optional, NoReturn, Tuple, List
 
 from cache3 import BaseCache
-from cache3.utils import NullContext
 from cache3.setting import DEFAULT_TIMEOUT, DEFAULT_TAG
+from cache3.utils import NullContext
 
 LK: Type = Union[NullContext, Lock]
 Number: Type = Union[int, float]
@@ -145,6 +145,13 @@ class SimpleCache(BaseCache):
                 return False
             return True
 
+    def ttl(self, key: Any, tag: TG) -> Time:
+
+        store_key: Any = self.store_key(key, tag)
+        if self._has_expired(store_key):
+            return -1
+        return self._expire_info[store_key] - current()
+
     def clear(self) -> bool:
         with self._lock:
             self._cache.clear()
@@ -164,18 +171,11 @@ class SimpleCache(BaseCache):
                 store_key, _ = self._cache.popitem()
                 del self._expire_info[store_key]
 
-    @staticmethod
-    def store_key(key: Any, tag: Optional[str]) -> str:
+    def store_key(self, key: Any, tag: TG) -> Any:
+        return key, tag
 
-        if ':' in tag:
-            raise ValueError(
-                "The ':' is not expected in tag."
-            )
-        return '%s:%s' % (key, tag)
-
-    @staticmethod
-    def restore_key(store_key: str) -> List[str]:
-        return store_key.rsplit(':', 1)
+    def restore_key(self, store_key: Tuple[Any, TG]) -> Tuple[Any, Any]:
+        return store_key
 
     def _has_expired(self, store_key: str) -> bool:
         exp: float = self._expire_info.get(store_key, -1.)
@@ -213,3 +213,12 @@ class SimpleCache(BaseCache):
 class SafeCache(SimpleCache):
 
     LOCK = Lock
+
+if __name__ == '__main__':
+
+    cache = SimpleCache()
+
+    for i in range(3):
+        cache[i] = i
+
+    print(list(cache))

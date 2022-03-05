@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 # DATE: 2021/7/24
 # Author: clarkmonkey@163.com
+
 from pathlib import Path
 from typing import Tuple
 
@@ -9,7 +10,7 @@ from typing import Tuple
 #    INFORMATION
 ####################
 PROGRAM: str = 'Cache3'
-VERSION: Tuple[int, int, int] = (0, 1, 0)
+VERSION: Tuple[int, int, int] = (0, 1, 1)
 
 ####################
 #    DEFAULT SETTING

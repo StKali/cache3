@@ -15,7 +15,7 @@ file: str = '.test'
 
 class Checker:
 
-    def __init__(self, number=1, string='hello', directory='hello', enumerator='a'):
+    def __init__(self, number=1, string='hello', directory='.hello', enumerator='a'):
         self.number = number
         self.string = string
         self.directory = directory

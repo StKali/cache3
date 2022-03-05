@@ -3,10 +3,9 @@
 # DATE: 2021/8/17
 # Author: clarkmonkey@163.com
 
-from typing import Any, Optional, Type, NoReturn, Union, Callable
-
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Any, Optional, Type, NoReturn, Union, Callable
 
 Number: Type = Union[str, int]
 
