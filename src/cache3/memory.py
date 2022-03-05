@@ -213,12 +213,3 @@ class SimpleCache(BaseCache):
 class SafeCache(SimpleCache):
 
     LOCK = Lock
-
-if __name__ == '__main__':
-
-    cache = SimpleCache()
-
-    for i in range(3):
-        cache[i] = i
-
-    print(list(cache))
