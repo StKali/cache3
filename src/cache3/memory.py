@@ -25,6 +25,13 @@ _locks: Dict[Any, Any] = {}
 # Thread unsafe cache in memory
 class SimpleCache(BaseCache):
     """
+    Simple encapsulation of ``OrderedDict``, so it has a performance similar
+    to that of a ``dict``, at the same time, it requirements for keys and
+    values are also relatively loose.
+
+    It is entirely implemented by memory, so use the required control capacity
+    and expiration time to avoid wast memory.
+
     >>> cache = SimpleCache('test_cache', 60)
     >>> cache.set('name', 'venus')
     True
@@ -36,16 +43,9 @@ class SimpleCache(BaseCache):
     >>> cache.set('gender', 'male', 0)
     True
     >>> cache.get('gender')
-
-    Simple encapsulation of ``OrderedDict``, so it has a performance similar
-    to that of a ``dict``, at the same time, it requirements for keys and
-    values are also relatively loose.
-
-    It is entirely implemented by memory, so use the required control capacity
-    and expiration time to avoid wast memory.
     """
 
-    LOCK = NullContext
+    LOCK: LK = NullContext
 
     def __init__(self, *args, **kwargs) -> None:
         super(SimpleCache, self).__init__(*args, **kwargs)
@@ -212,4 +212,4 @@ class SimpleCache(BaseCache):
 # Thread safe cache in memory
 class SafeCache(SimpleCache):
 
-    LOCK = Lock
+    LOCK: LK = Lock

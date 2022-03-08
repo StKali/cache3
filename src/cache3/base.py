@@ -301,6 +301,15 @@ class BaseCache:
     def __len__(self) -> int:
         return self.get_current_size()
 
+    def __contains__(self, key: Any) -> bool:
+        """ Check whether the key exists.
+
+        Tips: Does not accept the tag argument, which is the default
+
+        Return True if the key existed cache, otherwise False.
+        """
+        return self.has_key(key)
+
     __delitem__ = delete
     __getitem__ = get
     __setitem__ = set
