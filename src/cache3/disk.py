@@ -216,6 +216,7 @@ class SimpleDiskCache(BaseCache):
 
     @cached_property
     def location(self) -> str:
+        """ Return the path to the SQLite3 file. """
         return str(self.directory / self.name)
 
     def set(self, key: str, value: Any, timeout: Number = DEFAULT_TIMEOUT,
@@ -236,7 +237,7 @@ class SimpleDiskCache(BaseCache):
             else:
                 if self._insert_line(store_key, serial_value , timeout, tag):
                     self._add_count()
-                    if len(self) > self.max_size:
+                    if self._length > self.max_size:
                         self.evictor()
                 else:
                     return False
@@ -246,16 +247,21 @@ class SimpleDiskCache(BaseCache):
 
         store_key: str = self.store_key(key, tag)
         row: ROW = self.sqlite(
-            'SELECT `ROWID`, `value` '
+            'SELECT `ROWID`, `value`, `expire` '
             'FROM `cache` '
-            'WHERE `key` = ? AND `tag` = ? '
-            'AND (`expire` IS NULL OR `expire` > ?)',
-            (store_key, tag, current())
+            'WHERE `key` = ? AND `tag` = ? ',
+            # 'AND (`expire` IS NULL OR `expire` > ?)',
+            (store_key, tag)
         ).fetchone()
 
         if not row:
             return default
-        (rowid, serial_value) = row
+
+        (rowid, serial_value, expire) = row
+
+        if expire is not None and expire < current():
+            self._sub_count()
+            return default
 
         # FIXME async
         self.sqlite(
@@ -450,12 +456,46 @@ class SimpleDiskCache(BaseCache):
             )
         return True
 
-    def get_current_size(self) -> int:
+    @property
+    def _length(self) -> int:
+        """ This method is only for capacity constraints, and it doesn't really
+        represent a valid number of items.
+
+        Because the exact method of calculating the number of valid values is
+        very expensive, performing it on a per-set basis will greatly reduce
+        cache performance. So this is an approximate value for the purpose of
+        estimating cache size.
+
+        This feature is related to the implementation of cache eviction.
+
+        The count is increased each time the data is displayed, and the count is
+        decreased when the data is deleted by `delete` method or `del` keyword.
+        When a certain threshold is reached, the cache elimination is triggered.
+        At this time, the expired data is uniformly deleted.
+
+        The basis for this is as follows:
+            1 Caches usually read and write frequently.
+            2 Expired caches take up space, but not by much.
+            3 Deferred cache deletion will give a huge performance boost.
+
+        """
         (count,) = self.sqlite(
             'SELECT `count` FROM `info` '
             'WHERE `ROWID` = 1'
         ).fetchone()
         return count
+
+    def get_real_count(self) -> int:
+        self.flush_size()
+        return self.get_current_size()
+
+    def flush_size(self) -> NoReturn:
+        self.sqlite(
+            'UPDATE `info` SET `count` = ('
+            'SELECT COUNT(1) FROM `cache` '
+            'WHERE `expire` > ? '
+            ') WHERE ROWID = 1', (current(),)
+        )
 
     def store_key(self, key: Any, tag: Optional[str]) -> str:
         return key
@@ -519,12 +559,6 @@ class SimpleDiskCache(BaseCache):
                 self._txn_id = None
                 sql('COMMIT')
 
-    def _add_count(self) -> bool:
-        return self.sqlite(
-                'UPDATE `info` SET `count` = `count` + 1 '
-                'WHERE `ROWID` = 1'
-            ).rowcount == 1
-
     def _make_cache_dependencies(
             self, tables: Optional[Dict[str, Any]] = None
     ) -> NoReturn:
@@ -560,6 +594,12 @@ class SimpleDiskCache(BaseCache):
         with self._transact() as sqlite:
             return sqlite(
                 'UPDATE `info` SET `count` = `count` - 1 '
+                'WHERE `ROWID` = 1'
+            ).rowcount == 1
+
+    def _add_count(self) -> bool:
+        return self.sqlite(
+                'UPDATE `info` SET `count` = `count` + 1 '
                 'WHERE `ROWID` = 1'
             ).rowcount == 1
 
@@ -615,6 +655,9 @@ class SimpleDiskCache(BaseCache):
         return "<%s name=%s location=%s timeout=%.2f>" % (
             self.__class__.__name__, self.name, self.location, self.timeout
         )
+
+    def __len__(self) -> int:
+        return self.get_real_count()
 
     __delitem__ = delete
     __getitem__ = get
