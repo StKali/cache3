@@ -58,6 +58,12 @@ class BaseCacheApi:
         result = [elem for elem in self.cache]
         assert result == data
 
+    # api >>> __contains__
+    def test_contains(self):
+        self.cache['test_in'] = 'aaaa'
+        assert 'test_in' in self.cache
+        assert not 'test_in1' in self.cache
+
     # api >>> clear
     def test_clear(self, data: List[Tuple[Any, ...]] = many_pair):
         for key, value, tag in data[::-1]:

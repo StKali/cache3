@@ -158,9 +158,6 @@ class SimpleCache(BaseCache):
             self._expire_info.clear()
         return True
 
-    def get_current_size(self) -> int:
-        return len(self._cache)
-
     def lru_evict(self) -> NoReturn:
         if self.cull_size == 0:
             self._cache.clear()
@@ -203,6 +200,9 @@ class SimpleCache(BaseCache):
             if not self._has_expired(store_key):
                 key, tag = self.restore_key(store_key)
                 yield key, self.deserialize(self._cache[store_key]), tag
+
+    def __len__(self) -> int:
+        return len(self._cache)
 
     __delitem__ = delete
     __getitem__ = get

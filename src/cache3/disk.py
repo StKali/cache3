@@ -306,7 +306,7 @@ class SimpleDiskCache(BaseCache):
             else:
                 if self._insert_line(store_key, self.serialize(value), timeout, tag):
                     self._add_count()
-                    if len(self) > self.max_size:
+                    if self._length > self.max_size:
                         self.evictor()
                 else:
                     return False
@@ -487,7 +487,7 @@ class SimpleDiskCache(BaseCache):
 
     def get_real_count(self) -> int:
         self.flush_size()
-        return self.get_current_size()
+        return self._length
 
     def flush_size(self) -> NoReturn:
         self.sqlite(

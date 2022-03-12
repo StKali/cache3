@@ -6,6 +6,7 @@
 import functools
 import pickle
 import warnings
+from abc import ABC, abstractmethod
 from time import time as current
 from typing import (
     Any, Type, Optional, Union, Dict, Callable, NoReturn, List, Iterator
@@ -37,7 +38,7 @@ class InvalidCacheKey(ValueError):
     """ An Error thrown when the key invalid """
 
 
-class BaseCache:
+class BaseCache(ABC):
     """ A base class that specifies the API that caching
     must implement and some default implementations.
 
@@ -81,23 +82,20 @@ class BaseCache:
         self.evict = kwargs.get('evict', DEFAULT_EVICT)
         self.cull_size = kwargs.get('cull_size', DEFAULT_CULL_SIZE)
 
+    @abstractmethod
     def set(self, key: str, value: Any, timeout: Number = DEFAULT_TIMEOUT,
             tag: TG = DEFAULT_TAG) -> bool:
         """ Set a value in the cache. Use timeout for the key if
         it's given, Otherwise use the default timeout.
         """
-        raise NotImplementedError(
-            'subclasses of BaseCache must provide a set() method.'
-        )
 
+    @abstractmethod
     def get(self, key: str, default: Any = None, tag: TG = DEFAULT_TAG) -> Any:
         """ Fetch a given key from the cache. If the key does not exist, return
         default, which itself defaults to None.
         """
-        raise NotImplementedError(
-            'subclasses of BaseCache must provide a get() method'
-        )
 
+    @abstractmethod
     def ex_set(self, key: str, value: Any, timeout: float = DEFAULT_TIMEOUT,
                tag: Optional[str] = DEFAULT_TAG) -> bool:
         """ Set a value in the cache if the key does not already exist. If
@@ -106,9 +104,6 @@ class BaseCache:
 
         Return True if the value was stored, False otherwise.
         """
-        raise NotImplementedError(
-            'subclasses of BaseCache must provide an ex_set() method'
-        )
 
     def get_many(self, keys: List[str], tag: TG = DEFAULT_TAG) -> Dict[str, Any]:
         """ Fetch a bunch of keys from the cache. For certain backends (memcached,
@@ -125,31 +120,28 @@ class BaseCache:
                 returns[key] = value
         return returns
 
+    @abstractmethod
     def touch(self, key: str, timeout: Number, tag: TG = DEFAULT_TAG) -> bool:
         """ Update the key's expiry time using timeout. Return True if successful
         or False if the key does not exist.
         """
-        raise NotImplementedError(
-            'subclasses of BaseCache must provide a touch() method'
-        )
 
+    @abstractmethod
     def delete(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
         """ Delete a key from the cache
 
         Return True if delete success, False otherwise.
         """
-        raise NotImplementedError(
-            'subclasses of BaseCache must provide a delete() method'
-        )
 
+    @abstractmethod
     def inspect(self, key: str, tag: TG = DEFAULT_TAG) -> Optional[Dict[str, Any]]:
         """ Displays the information of the key value if it exists in cache.
 
         Returns the details if the key exists, otherwise None.
         """
-        raise NotImplementedError(
-            'subclasses of BaseCache must provide a inspect() method'
-        )
+        # raise NotImplementedError(
+        #     'subclasses of BaseCache must provide a inspect() method'
+        # )
 
     def store_key(self, key: Any, tag: Optional[str]) -> str:
         """ Default function to generate keys.
@@ -194,23 +186,22 @@ class BaseCache:
         """
         return dump
 
+    @abstractmethod
     def incr(self, key: str, delta: int = 1, tag: TG = DEFAULT_TAG) -> Number:
         """ Add delta to value in the cache. If the key does not exist, raise a
         ValueError exception.  """
-        raise NotImplementedError(
-            'subclasses of BaseCache must provide a incr() method'
-        )
+        # raise NotImplementedError(
+        #     'subclasses of BaseCache must provide a incr() method'
+        # )
 
     def decr(self, key: str, delta: int = 1, tag: TG = DEFAULT_TAG) -> Number:
         """ Subtract delta from value in the cache. If the key does not exist,
          raise a ValueError exception. """
         return self.incr(key, -delta, tag)
 
+    @abstractmethod
     def has_key(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
         """ Return True if the key is in the cache and has not expired. """
-        raise NotImplementedError(
-            'subclasses of BaseCache must provide a incr() method'
-        )
 
     def memoize(self, tag: Optional[str] = DEFAULT_TAG, timeout: float = DEFAULT_TIMEOUT) -> Any:
         """ The cache is decorated with the return value of the function,
@@ -236,17 +227,13 @@ class BaseCache:
 
         return decorator
 
+    @abstractmethod
     def ttl(self, key: Any, tag: TG) -> Time:
         """ Return the Time-to-live value. """
-        raise NotImplementedError(
-            'subclasses of BaseCache must provide a ttl() method'
-        )
 
+    @abstractmethod
     def clear(self) -> bool:
         """ clear all caches. """
-        raise NotImplementedError(
-            'subclasses of BaseCache must provide a clear() method'
-        )
 
     @property
     def evictor(self) -> Callable:
@@ -288,18 +275,13 @@ class BaseCache:
             self.__class__.__name__, self.name, self.timeout
         )
 
+    @abstractmethod
     def __iter__(self) -> Iterator:
-        raise NotImplementedError(
-            'subclasses of BaseCache must provide a __iter__() method.'
-        )
+        """ Iterator of cache """
 
-    def get_current_size(self) -> int:
-        raise NotImplementedError(
-            'subclasses of BaseCache must provide a get_current_size() method.'
-        )
-
+    @abstractmethod
     def __len__(self) -> int:
-        return self.get_current_size()
+        """Return the cache items count."""
 
     def __contains__(self, key: Any) -> bool:
         """ Check whether the key exists.
