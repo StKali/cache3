@@ -53,8 +53,6 @@ class BaseCache(ABC):
             deserialize(serial_value) -> value
     """
 
-    gap: str = '-'
-
     name: str = StringValidate(minsize=1, maxsize=MAX_KEY_LENGTH)
     timeout: Number = NumberValidate(minvalue=MIN_TIMEOUT, maxvalue=MAX_TIMEOUT)
     max_size: int = NumberValidate(minvalue=0)
@@ -143,6 +141,7 @@ class BaseCache(ABC):
         #     'subclasses of BaseCache must provide a inspect() method'
         # )
 
+    @abstractmethod
     def store_key(self, key: Any, tag: Optional[str]) -> str:
         """ Default function to generate keys.
 
@@ -151,11 +150,10 @@ class BaseCache(ABC):
         as much as possible. At the same time, subclasses typically
         override the method to generate a specific key.
         """
-        return '%s%s%s' % (key, self.gap, tag)
 
+    @abstractmethod
     def restore_key(self, store_key: str) -> List[str]:
         """ extract key and tag from serialize key """
-        return store_key.rsplit(self.gap, 1)
 
     def get_backend_timeout(
             self, timeout: float = DEFAULT_TIMEOUT, now: Optional[Time] = None
