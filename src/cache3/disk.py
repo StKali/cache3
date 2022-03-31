@@ -665,8 +665,12 @@ class SimpleDiskCache(BaseCache):
 
 
 class DiskCache(PickleMixin, SimpleDiskCache):
-    """"""
+    """ Use `Pickle` as the underlying serialization protocol.
+    Supports most objects in Python as value.
+    """
 
 
 class JsonDiskCache(JSONMixin, SimpleDiskCache):
-    """"""
+    """ Use `Json` as the underlying serialization protocol.
+    Making some unhashable objects as value.
+    """

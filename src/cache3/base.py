@@ -137,12 +137,9 @@ class BaseCache(ABC):
 
         Returns the details if the key exists, otherwise None.
         """
-        # raise NotImplementedError(
-        #     'subclasses of BaseCache must provide a inspect() method'
-        # )
 
     @abstractmethod
-    def store_key(self, key: Any, tag: Optional[str]) -> str:
+    def store_key(self, key: Any, tag: Optional[str]) -> Any:
         """ Default function to generate keys.
 
         Construct the key used by all other methods. By default,
@@ -152,7 +149,7 @@ class BaseCache(ABC):
         """
 
     @abstractmethod
-    def restore_key(self, store_key: str) -> List[str]:
+    def restore_key(self, store_key: Any) -> Any:
         """ extract key and tag from serialize key """
 
     def get_backend_timeout(
@@ -186,15 +183,16 @@ class BaseCache(ABC):
 
     @abstractmethod
     def incr(self, key: str, delta: int = 1, tag: TG = DEFAULT_TAG) -> Number:
-        """ Add delta to value in the cache. If the key does not exist, raise a
-        ValueError exception.  """
-        # raise NotImplementedError(
-        #     'subclasses of BaseCache must provide a incr() method'
-        # )
+        """ Add delta to value in the cache.
+
+        If the key does not exist, raise a ValueError exception.
+        """
 
     def decr(self, key: str, delta: int = 1, tag: TG = DEFAULT_TAG) -> Number:
-        """ Subtract delta from value in the cache. If the key does not exist,
-         raise a ValueError exception. """
+        """ Subtract delta from value in the cache.
+
+        If the key does not exist, raise a ValueError exception.
+        """
         return self.incr(key, -delta, tag)
 
     @abstractmethod
@@ -326,4 +324,3 @@ class PickleMixin:
         if isinstance(value, (int, float, str)):
             return value
         return pickle.dumps(value)
-

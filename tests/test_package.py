@@ -10,7 +10,9 @@ from typing import NoReturn
 def test_package() -> NoReturn:
 
     import cache3
-    assert cache3.__doc__ == "A safe and light Python cache library."
+    assert cache3.__doc__ == """
+Cache3 is a MIT licensed  safe and lightweight cache library, written in pure-Python.
+"""
     assert cache3.__author__ == "clarkmonkey@163.com"
     assert cache3.__name__ == "Cache3"
 

@@ -10,7 +10,7 @@ from typing import Tuple
 #    INFORMATION
 ####################
 PROGRAM: str = 'Cache3'
-VERSION: Tuple[int, int, int] = (0, 1, 1)
+VERSION: Tuple[int, int, int] = (0, 1, 2)
 
 ####################
 #    DEFAULT SETTING
