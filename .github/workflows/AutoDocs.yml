@@ -1,0 +1,36 @@
+name: AutoDocs
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      # prepare python env
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.10"
+
+      # install dependencies
+      - name: Install dependencies
+        run: |
+          pip install sphinx furo
+
+      # Build Sphinx docs
+      - name: Build the book
+        run: |
+          cd docs
+          make html
+
+      # Push gh-pages branch
+      - name: GitHub Pages action
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+          publish_dir: docs/build/html
