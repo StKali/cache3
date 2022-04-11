@@ -7,10 +7,8 @@ in pure-Python.
 
 .. image:: https://img.shields.io/badge/LICENSE-MIT-green
     :alt: LICENSE
-
 .. image:: https://img.shields.io/badge/version-0.1.0-informational
     :alt: Version
-
 .. image:: https://img.shields.io/badge/python-3.5-blueviolet
     :alt: Python Version
 
@@ -55,7 +53,7 @@ Feature
 Links
 =====
 
-- Documentation: https://venusmonkey.github.io/Cache3
+- Documentation: https://venusmonkey.github.io/cache3/
 
 - PyPI Releases: https://pypi.org/project/pycache3/0.1.2/
 
