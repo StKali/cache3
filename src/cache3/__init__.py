@@ -12,10 +12,11 @@ from typing import List
 from cache3.base import BaseCache, JSONMixin, PickleMixin
 from cache3.disk import SimpleDiskCache, DiskCache, JsonDiskCache
 from cache3.memory import SimpleCache, SafeCache
-from cache3.setting import PROGRAM, VERSION
+from cache3.setting import PACKAGE_NAME, PROJECT, VERSION
 
 __author__: str = 'clarkmonkey@163.com'
-__name__: str = PROGRAM
+__name__: str = PACKAGE_NAME
+__project_name__: str = PROJECT
 __version__: str = '.'.join(map(str, VERSION))
 
 __all__: List[str] = [

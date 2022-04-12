@@ -4,7 +4,11 @@ project_path: Path = Path(__file__).parents[2].resolve() / 'src'
 sys.path.insert(0, str(project_path))
 
 import cache3
+
 release = cache3.__version__
+project = cache3.__project_name__
+author = cache3.__author__
+copyright = f'2022, {author}'
 
 extensions = [
     'sphinx.ext.duration',
@@ -33,11 +37,12 @@ html_static_path = ['_static']
 
 html_sidebars = {
     "**": [
-        # "sidebar/scroll-start.html",
+        "sidebar/scroll-start.html",
         "sidebar/brand.html",
+        "my_sidebar.html",
         "sidebar/search.html",
         "sidebar/navigation.html",
         "sidebar/ethical-ads.html",
-        # "sidebar/scroll-end.html",
+        "sidebar/scroll-end.html",
     ]
 }

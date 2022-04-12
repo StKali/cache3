@@ -55,7 +55,7 @@ Links
 
 - Documentation: https://venusmonkey.github.io/cache3/
 
-- PyPI Releases: https://pypi.org/project/pycache3/0.1.2/
+- PyPI Releases: https://pypi.org/project/pycache3/
 
 - Source Code: https://github.com/VenusMonkey/cache3
 

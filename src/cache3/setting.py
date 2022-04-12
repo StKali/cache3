@@ -9,7 +9,8 @@ from typing import Tuple
 ####################
 #    INFORMATION
 ####################
-PROGRAM: str = 'Cache3'
+PROJECT: str = 'cache3'
+PACKAGE_NAME: str = 'pycache3'   # Pypi
 VERSION: Tuple[int, int, int] = (0, 1, 2)
 
 ####################
