@@ -4,13 +4,12 @@ pycache3: Python3 cache library
 **PyCache3** is a MIT licensed  safe and lightweight cache library, written
 in pure-Python.
 
-
 .. image:: https://img.shields.io/badge/LICENSE-MIT-green
-    :alt: LICENSE
-.. image:: https://img.shields.io/badge/version-0.1.0-informational
-    :alt: Version
-.. image:: https://img.shields.io/badge/python-3.5-blueviolet
-    :alt: Python Version
+    :target: https://github.com/VenusMonkey/cache3/blob/master/LICENSE
+.. image:: https://img.shields.io/badge/version-0.1.2-informational
+    :target: https://pypi.org/project/pycache3
+.. image:: https://img.shields.io/badge/python-3.5+-blueviolet
+    :target: https://www.python.org
 
 cache3 is very tiny and completely implemented by the Python standard library without any third-party dependencies, so it can be easily embedded in any Python program or script.
 
@@ -34,7 +33,7 @@ or download the file and install it locally
 .. code-block:: shell
 
     $ git clone https://github.com/VenusMonkey/cache3.git
-    $ cd Cache3
+    $ cd cache3
     $ python setup.py install
 
 Feature
@@ -53,9 +52,9 @@ Feature
 Links
 =====
 
-- Documentation: https://venusmonkey.github.io/cache3/
+- Documentation: https://venusmonkey.github.io/cache3
 
-- PyPI Releases: https://pypi.org/project/pycache3/
+- PyPI Releases: https://pypi.org/project/pycache3
 
 - Source Code: https://github.com/VenusMonkey/cache3
 
