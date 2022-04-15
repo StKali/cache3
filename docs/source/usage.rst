@@ -1,6 +1,6 @@
 Overview
 ========
-:doc:`Cache3 <index>` supports both **memory** and **disk** cache backends.
+:doc:`cache3 <index>` supports both **memory** and **disk** cache backends.
 
 **Memory-based** cache has good performance but does not support data persistence.
 
@@ -21,19 +21,13 @@ To use cache3, first install it using pip:
 
 .. code-block:: console
 
-   (.cache3) $ pip install -U cache3
-
-or install it from git
-
-.. code-block:: console
-
-    (.cache3) $ pip install git+https://github.com/VenusMonkey/Cache3.git
+   $ pip install -U cache3
 
 or download source and install
 
 .. code-block:: console
 
-    $ git clone git@github.com:VenusMonkey/Cache3.git
+    $ git clone https://github.com/StKali/cache3.git
     $ cd cache3
     $ python setup.py install
 

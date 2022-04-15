@@ -10,8 +10,7 @@ from typing import Tuple
 #    INFORMATION
 ####################
 PROJECT: str = 'cache3'
-PACKAGE_NAME: str = 'pycache3'   # Pypi
-VERSION: Tuple[int, int, int] = (0, 1, 2)
+VERSION: Tuple[int, int, int] = (0, 2, 0)
 
 ####################
 #    DEFAULT SETTING
@@ -22,7 +21,7 @@ DEFAULT_MAX_SIZE: int = 1 << 24  # 16M
 DEFAULT_CULL_SIZE: int = 10  # 10 elements
 DEFAULT_TAG: str = "default"
 DEFAULT_NAME: str = 'default.cache3'
-DEFAULT_STORE: Path = Path('~/.pycache3')
+DEFAULT_STORE: Path = Path('~/.cache3')
 
 ####################
 #    LIMIT SETTING

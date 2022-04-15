@@ -1,13 +1,13 @@
-pycache3: Python3 cache library
+cache3: Python3 cache library
 ===============================
 
-**PyCache3** is a MIT licensed  safe and lightweight cache library, written
+**cache3** is a MIT licensed  safe and lightweight cache library, written
 in pure-Python.
 
 .. image:: https://img.shields.io/badge/LICENSE-MIT-green
-    :target: https://github.com/VenusMonkey/cache3/blob/master/LICENSE
-.. image:: https://img.shields.io/badge/version-0.1.2-informational
-    :target: https://pypi.org/project/pycache3
+    :target: https://github.com/StKali/cache3/blob/master/LICENSE
+.. image:: https://img.shields.io/badge/version-0.2.0-informational
+    :target: https://pypi.org/project/cache3
 .. image:: https://img.shields.io/badge/python-3.5+-blueviolet
     :target: https://www.python.org
 
@@ -16,23 +16,17 @@ cache3 is very tiny and completely implemented by the Python standard library wi
 Installing
 ==========
 
-pycache3 is available from PyPI and can be installed by running:
+cache3 is available from PyPI and can be installed by running:
 
 .. code:: shell
 
-    pip install -U pycache3
-
-or install from github
-
-.. code:: shell
-
-    pip install git+https://github.com/VenusMonkey/cache3.git
+    pip install -U cache3
 
 or download the file and install it locally
 
 .. code-block:: shell
 
-    $ git clone https://github.com/VenusMonkey/cache3.git
+    $ git clone https://github.com/StKali/cache3.git
     $ cd cache3
     $ python setup.py install
 
@@ -52,13 +46,13 @@ Feature
 Links
 =====
 
-- Documentation: https://venusmonkey.github.io/cache3
+- Documentation: https://stkali.github.io/cache3/
 
-- PyPI Releases: https://pypi.org/project/pycache3
+- PyPI Releases: https://pypi.org/project/cache3
 
-- Source Code: https://github.com/VenusMonkey/cache3
+- Source Code: https://github.com/StKali/cache3
 
-- Issue Tracker: https://github.com/VenusMonkey/cache3/issues
+- Issue Tracker: https://github.com/StKali/cache3/issues
 
 License
 =======

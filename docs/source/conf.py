@@ -6,7 +6,7 @@ sys.path.insert(0, str(project_path))
 import cache3
 
 release = cache3.__version__
-project = cache3.__project_name__
+project = cache3.__name__
 author = cache3.__author__
 copyright = f'2022, {author}'
 
