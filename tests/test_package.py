@@ -13,8 +13,8 @@ def test_package() -> NoReturn:
     assert cache3.__doc__ == """
 Cache3 is a MIT licensed  safe and lightweight cache library, written in pure-Python.
 """
-    assert cache3.__author__ == "clarkmonkey@163.com"
-    assert cache3.__name__ == "Cache3"
+    assert cache3.__author__ == "St. Kali"
+    assert cache3.__name__ == "cache3"
 
 
 if __name__ == '__main__':

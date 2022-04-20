@@ -6,7 +6,7 @@
 from typing import List
 
 import pytest
-from cache3 import BaseCache, SimpleCache, SafeCache, DiskCache, SimpleDiskCache, JsonDiskCache
+from cache3 import AbstractCache, SimpleCache, SafeCache, DiskCache, SimpleDiskCache, JsonDiskCache
 
 MAX_SIZE_CASES: List[int] = [
     20, 30, 40, 50, 60
@@ -15,7 +15,7 @@ MAX_SIZE_CASES: List[int] = [
 
 class BaseCase:
 
-    klass = BaseCache
+    klass = AbstractCache
 
     @pytest.fixture()
     def cache(self, request):
@@ -33,13 +33,13 @@ class BaseCase:
         instance.clear()
 
     @pytest.mark.parametrize('cache', MAX_SIZE_CASES, indirect=True)
-    def test_cull(self, cache: BaseCache):
+    def test_cull(self, cache: AbstractCache):
 
         for i in range(cache.max_size + 2):
             cache[str(i)] = i
 
     @pytest.mark.parametrize('zero_cache', MAX_SIZE_CASES, indirect=True)
-    def test_zero_cull(self, zero_cache: BaseCache):
+    def test_zero_cull(self, zero_cache: AbstractCache):
 
         for i in range(zero_cache.max_size + 2):
             zero_cache[str(i)] = i
@@ -52,7 +52,7 @@ class TestSimpleCache(BaseCase):
     klass = SimpleCache
 
 
-class TestSafeCache(BaseCache):
+class TestSafeCache(AbstractCache):
 
     CLASS = SafeCache
 

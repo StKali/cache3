@@ -32,8 +32,8 @@ MAX_TIMEOUT: int = 365 * 24 * 60 * 60
 MIN_TIMEOUT: int = 0
 
 
-EVICT_LRU: str = 'lru_evict'
-EVICT_FIFO: str = 'fifo_evict'
-EVICT_LFU: str = 'lfu_evict'
+LRU: str = 'lru'
+FIFO: str = 'fifo'
+LFU: str = 'lfu'
 
-DEFAULT_EVICT: str = EVICT_LRU
+DEFAULT_EVICT: str = LRU

@@ -13,7 +13,7 @@ from typing import (
     NoReturn, Type, Union, Optional, Dict, Any, List, Tuple, Iterator, Callable
 )
 
-from cache3 import BaseCache
+from cache3 import AbstractCache
 from cache3.base import PickleMixin, JSONMixin
 from cache3.setting import (
     DEFAULT_TIMEOUT, DEFAULT_TAG, DEFAULT_STORE, DEFAULT_SQLITE_TIMEOUT
@@ -38,7 +38,7 @@ PRAGMAS: Dict[str, Union[str, int]] = {
     'auto_vacuum': 1,
     'cache_size': 1 << 13,  # 8, 192 pages
     'journal_mode': 'wal',
-    # 'threads': 4,  # SQLite work threads count
+    'threads': 4,  # SQLite work threads count
     'temp_store': 2,  # DEFAULT: 0 | FILE: 1 | MEMORY: 2
     'mmap_size': 1 << 26,  # 64MB
     'synchronous': 1,
@@ -174,7 +174,7 @@ class SessionDescriptor:
         return self._close(instance)
 
 
-class SimpleDiskCache(BaseCache):
+class SimpleDiskCache(AbstractCache):
     """ A base class for all disk cache.
 
     Most of the methods of disk cache are implemented in this class.
@@ -238,7 +238,7 @@ class SimpleDiskCache(BaseCache):
                 if self._insert_line(store_key, serial_value , timeout, tag):
                     self._add_count()
                     if self._length > self.max_size:
-                        self.evictor()
+                        self.evict()
                 else:
                     return False
         return True
@@ -307,7 +307,7 @@ class SimpleDiskCache(BaseCache):
                 if self._insert_line(store_key, self.serialize(value), timeout, tag):
                     self._add_count()
                     if self._length > self.max_size:
-                        self.evictor()
+                        self.evict()
                 else:
                     return False
         return True
@@ -503,7 +503,7 @@ class SimpleDiskCache(BaseCache):
     def restore_key(self, serial_key: str) -> str:
         return serial_key
 
-    def lru_evict(self) -> NoReturn:
+    def evict(self) -> NoReturn:
         """ It is called by the master logic, and there is no need to
         care about when to schedule. """
 

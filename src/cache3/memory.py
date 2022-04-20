@@ -6,16 +6,24 @@
 from collections import OrderedDict
 from threading import Lock
 from time import time as current
-from typing import Dict, Any, Type, Union, Optional, NoReturn, Tuple, List
+from typing import Dict, Any, Type, Union, Optional, NoReturn, Tuple, List, Callable
 
-from cache3 import BaseCache
+from cache3 import AbstractCache
 from cache3.setting import DEFAULT_TIMEOUT, DEFAULT_TAG
 from cache3.utils import NullContext
 
 LK: Type = Union[NullContext, Lock]
 Number: Type = Union[int, float]
 TG: Type = Optional[str]
+SK: Type = Tuple[Any, TG]
 Time: Type = float
+
+VT: Type = int
+VH = Callable[[Any, VT], NoReturn]
+
+VT_SET = 0
+VT_GET = 1
+VT_INCR = 2
 
 _caches: Dict[Any, Any] = {}
 _expire_info: Dict[Any, Any] = {}
@@ -23,7 +31,7 @@ _locks: Dict[Any, Any] = {}
 
 
 # Thread unsafe cache in memory
-class SimpleCache(BaseCache):
+class SimpleCache(AbstractCache):
     """
     Simple encapsulation of ``OrderedDict``, so it has a performance similar
     to that of a ``dict``, at the same time, it requirements for keys and
@@ -49,32 +57,32 @@ class SimpleCache(BaseCache):
 
     def __init__(self, *args, **kwargs) -> None:
         super(SimpleCache, self).__init__(*args, **kwargs)
-
+        self.visit_hook: VH = getattr(self, f'{self.evict_type}_hook_visit')
         # Attributes _name, _timeout from validate.
-        self._cache: OrderedDict[str, Any] = _caches.setdefault(
+        self._cache: OrderedDict[SK, Any] = _caches.setdefault(
             self.name, OrderedDict()
         )
-        self._expire_info: Dict[str, Any] = _expire_info.setdefault(self.name, {})
+        self._expire_info: Dict[SK, Any] = _expire_info.setdefault(self.name, {})
         self._lock: LK = _locks.setdefault(self.name, self.LOCK())
 
     def set(
             self, key: Any, value: Any, timeout: Number = DEFAULT_TIMEOUT,
             tag: TG = DEFAULT_TAG
     ) -> bool:
-        store_key: str = self.store_key(key, tag=tag)
+        store_key: SK = self.store_key(key, tag=tag)
         serial_value: Any = self.serialize(value)
         with self._lock:
             return self._set(store_key, serial_value, timeout)
 
     def get(self, key: str, default: Any = None, tag: TG = DEFAULT_TAG) -> Any:
 
-        store_key: str = self.store_key(key, tag=tag)
+        store_key: SK = self.store_key(key, tag=tag)
         with self._lock:
             if self._has_expired(store_key):
                 self._delete(store_key)
                 return default
             value: Any = self.deserialize(self._cache[store_key])
-            self._cache.move_to_end(store_key, last=False)
+            self.visit_hook(store_key, VT_GET)
         return value
 
     def ex_set(
@@ -85,7 +93,7 @@ class SimpleCache(BaseCache):
         but whether the mutex takes effect depends on the lock type.
         """
 
-        store_key: str = self.store_key(key, tag=tag)
+        store_key: SK = self.store_key(key, tag=tag)
         serial_value: Any = self.serialize(value)
 
         with self._lock:
@@ -96,7 +104,7 @@ class SimpleCache(BaseCache):
 
     def touch(self, key: str, timeout: Number, tag: TG = DEFAULT_TAG) -> bool:
         """ Renew the key. When the key does not exist, false will be returned """
-        store_key: str = self.store_key(key, tag=tag)
+        store_key: SK = self.store_key(key, tag=tag)
         with self._lock:
             if self._has_expired(store_key):
                 return False
@@ -105,7 +113,7 @@ class SimpleCache(BaseCache):
 
     def delete(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
 
-        store_key: str = self.store_key(key, tag=tag)
+        store_key: SK = self.store_key(key, tag=tag)
         with self._lock:
             return self._delete(store_key)
 
@@ -113,7 +121,7 @@ class SimpleCache(BaseCache):
         """ Get the details of the key value include stored key and
         serialized value.
         """
-        store_key: str = self.store_key(key, tag)
+        store_key: SK = self.store_key(key, tag)
         if not self._has_expired(store_key):
             return {
                 'key': key,
@@ -125,7 +133,7 @@ class SimpleCache(BaseCache):
 
     def incr(self, key: str, delta: int = 1, tag: TG = DEFAULT_TAG) -> Number:
         """ Will throed ValueError when the key is not existed. """
-        store_key: str = self.store_key(key, tag=tag)
+        store_key: SK = self.store_key(key, tag=tag)
         with self._lock:
             if self._has_expired(store_key):
                 self._delete(store_key)
@@ -133,12 +141,12 @@ class SimpleCache(BaseCache):
             value: Any = self.deserialize(self._cache[store_key])
             serial_value: int = self.serialize(value + delta)
             self._cache[store_key] = serial_value
-            self._cache.move_to_end(store_key, last=False)
+            self.visit_hook(store_key, VT_INCR)
         return serial_value
 
     def has_key(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
 
-        store_key: str = self.store_key(key, tag=tag)
+        store_key: SK = self.store_key(key, tag=tag)
         with self._lock:
             if self._has_expired(store_key):
                 self._delete(store_key)
@@ -158,7 +166,7 @@ class SimpleCache(BaseCache):
             self._expire_info.clear()
         return True
 
-    def lru_evict(self) -> NoReturn:
+    def evict(self) -> NoReturn:
         if self.cull_size == 0:
             self._cache.clear()
             self._expire_info.clear()
@@ -168,17 +176,17 @@ class SimpleCache(BaseCache):
                 store_key, _ = self._cache.popitem()
                 del self._expire_info[store_key]
 
-    def store_key(self, key: Any, tag: TG) -> Any:
+    def store_key(self, key: Any, tag: TG) -> SK:
         return key, tag
 
-    def restore_key(self, store_key: Tuple[Any, TG]) -> Tuple[Any, Any]:
+    def restore_key(self, store_key: SK) -> SK:
         return store_key
 
-    def _has_expired(self, store_key: str) -> bool:
+    def _has_expired(self, store_key: SK) -> bool:
         exp: float = self._expire_info.get(store_key, -1.)
         return exp is not None and exp <= current()
 
-    def _delete(self, store_key: str) -> bool:
+    def _delete(self, store_key: SK) -> bool:
         try:
             del self._cache[store_key]
             del self._expire_info[store_key]
@@ -186,12 +194,12 @@ class SimpleCache(BaseCache):
             return False
         return True
 
-    def _set(self, store_key: str, value: Any, timeout=DEFAULT_TIMEOUT) -> bool:
+    def _set(self, store_key: SK, value: Any, timeout=DEFAULT_TIMEOUT) -> bool:
 
         if self.timeout and len(self) >= self.max_size:
-            self.evictor()
+            self.evict()
         self._cache[store_key] = value
-        self._cache.move_to_end(store_key, last=False)
+        self.visit_hook(store_key, VT_SET)
         self._expire_info[store_key] = self.get_backend_timeout(timeout)
         return True
 
@@ -203,6 +211,16 @@ class SimpleCache(BaseCache):
 
     def __len__(self) -> int:
         return len(self._cache)
+
+    def lru_hook_visit(self, store_key: Any, vt: VT) -> NoReturn:
+        self._cache.move_to_end(store_key, last=False)
+
+    def lfu_hook_visit(self, store_key: Any, vt: VT) -> NoReturn:
+        """"""
+
+    def fifo_hook_visit(self, store_key: Any, vt: VT) -> NoReturn:
+        if vt == VT_SET:
+            self._cache.move_to_end(store_key, last=False)
 
     __delitem__ = delete
     __getitem__ = get

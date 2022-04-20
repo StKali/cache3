@@ -5,7 +5,6 @@
 
 import functools
 import pickle
-import warnings
 from abc import ABC, abstractmethod
 from time import time as current
 from typing import (
@@ -14,8 +13,8 @@ from typing import (
 
 from cache3.setting import (
     DEFAULT_TAG, DEFAULT_TIMEOUT, MAX_TIMEOUT, MIN_TIMEOUT, MAX_KEY_LENGTH,
-    DEFAULT_NAME, DEFAULT_MAX_SIZE, DEFAULT_EVICT, DEFAULT_CULL_SIZE, EVICT_LFU,
-    EVICT_FIFO, EVICT_LRU
+    DEFAULT_NAME, DEFAULT_MAX_SIZE, DEFAULT_EVICT, DEFAULT_CULL_SIZE, LFU,
+    FIFO, LRU
 )
 from cache3.utils import empty
 from cache3.validate import NumberValidate, StringValidate, EnumerateValidate
@@ -28,6 +27,8 @@ except ImportError:
 Number: Type = Union[int, float]
 Time = float
 TG: Type = Optional[str]
+VT = int
+VH = Callable[[Any, VT], NoReturn]
 
 
 class CacheKeyWarning(RuntimeWarning):
@@ -38,7 +39,7 @@ class InvalidCacheKey(ValueError):
     """ An Error thrown when the key invalid """
 
 
-class BaseCache(ABC):
+class AbstractCache(ABC):
     """ A base class that specifies the API that caching
     must implement and some default implementations.
 
@@ -56,7 +57,7 @@ class BaseCache(ABC):
     name: str = StringValidate(minsize=1, maxsize=MAX_KEY_LENGTH)
     timeout: Number = NumberValidate(minvalue=MIN_TIMEOUT, maxvalue=MAX_TIMEOUT)
     max_size: int = NumberValidate(minvalue=0)
-    evict: str = EnumerateValidate(EVICT_LRU, EVICT_FIFO, EVICT_LFU)
+    evict_type: str = EnumerateValidate(LRU, FIFO, LFU)
     cull_size: str = NumberValidate(minvalue=0)
 
     def __init__(
@@ -64,21 +65,16 @@ class BaseCache(ABC):
             name: str = DEFAULT_NAME,
             timeout: Number = DEFAULT_TIMEOUT,
             max_size: int = DEFAULT_MAX_SIZE,
+            evict_type: str = DEFAULT_EVICT,
+            cull_size: int = DEFAULT_CULL_SIZE,
             **kwargs
     ) -> None:
         self.name: str = name
         self.timeout: Number = timeout
         self.max_size: int = max_size
-        self.evict: str = DEFAULT_EVICT
-        self.cull_size: int = DEFAULT_CULL_SIZE
+        self.evict_type: str = evict_type
+        self.cull_size: int = cull_size
         self._kwargs: Dict[str, Any] = kwargs
-
-    def config(self, **kwargs) -> NoReturn:
-        """ The cache is configured in fine grain By default,
-        Configure the cache eviction policy.
-        """
-        self.evict = kwargs.get('evict', DEFAULT_EVICT)
-        self.cull_size = kwargs.get('cull_size', DEFAULT_CULL_SIZE)
 
     @abstractmethod
     def set(self, key: str, value: Any, timeout: Number = DEFAULT_TIMEOUT,
@@ -231,8 +227,8 @@ class BaseCache(ABC):
     def clear(self) -> bool:
         """ clear all caches. """
 
-    @property
-    def evictor(self) -> Callable:
+    @abstractmethod
+    def evict(self) -> NoReturn:
         """ Implementation of the cache eviction policy.
 
         The ``_evict`` parameter is used to determine the eviction policy.
@@ -247,24 +243,24 @@ class BaseCache(ABC):
         warning otherwise.
         """
 
-        evictor: Callable = getattr(self, self.evict, empty)
-        if evictor is empty:
-            warnings.warn(
-                "Not found '%s' evict method, it will cause the"
-                "cache to grow without limit." % self.evict,
-                RuntimeWarning
-            )
-            # Just to return a callable object ~.
-            return object
+        # evictor: Callable = getattr(self, self.evict, empty)
+        # if evictor is empty:
+        #     warnings.warn(
+        #         "Not found '%s' evict method, it will cause the"
+        #         "cache to grow without limit." % self.evict,
+        #         RuntimeWarning
+        #     )
+        #     # Just to return a callable object ~.
+        #     return object
+        #
+        # if not callable(evictor):
+        #     warnings.warn(
+        #         "Invalid evict '%s', It must a callable object." % evictor,
+        #         RuntimeWarning
+        #     )
+        #     return object
 
-        if not callable(evictor):
-            warnings.warn(
-                "Invalid evict '%s', It must a callable object." % evictor,
-                RuntimeWarning
-            )
-            return object
-
-        return evictor
+        # return evictor
 
     def __repr__(self) -> str:
         return "<%s name=%s timeout=%.2f>" % (
