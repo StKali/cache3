@@ -30,8 +30,8 @@ Number: Type = Union[int, float]
 TG: Type = Optional[str]
 Time: Type = Optional[float]
 PATH: Type = Union[Path, str]
-QY: Type = Callable[[Any, ...], Cursor]
-ROW: Type = Optional[Tuple[Any, ...]]
+QY: Type = Callable[[Any], Cursor]
+ROW: Type = Optional[Tuple[Any]]
 
 # SQLite pragma configs
 PRAGMAS: Dict[str, Union[str, int]] = {
