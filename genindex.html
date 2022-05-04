@@ -1,0 +1,599 @@
+<!doctype html>
+<html class="no-js">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="#" /><link rel="search" title="Search" href="search.html" />
+
+    <meta name="generator" content="sphinx-4.5.0, furo 2022.04.07"/><title>Index - Python 0.1.2 documentation</title>
+<link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=68f4518137b9aefe99b631505a2064c3c42c9852" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  --color-brand-primary: #7C4DFF;
+  --color-brand-content: #7C4DFF;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-half" viewBox="0 0 24 24">
+    <title>Auto light/dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M13 12h5" />
+      <path d="M13 15h4" />
+      <path d="M13 18h1" />
+      <path d="M13 9h4" />
+      <path d="M13 6h1" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="index.html"><div class="brand">Python 0.1.2 documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
+  
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="_static/logo.png" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="_static/logo.png" alt="Dark Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">Python 0.1.2 documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
+  <input class="sidebar-search" placeholder=Search name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-tree">
+  <ul>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html#quick-start">Quick start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html#memory-based-cache">memory-based cache</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html#disk-based-cache">disk-based cache</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html#mixin-extend">Mixin &amp; Extend</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
+</ul>
+
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container"><div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main">
+          
+<section class="genindex-section">
+  <h1 id="index">Index</h1>
+  <div class="genindex-jumpbox"><a href="#_"><strong>_</strong></a> | <a href="#B"><strong>B</strong></a> | <a href="#C"><strong>C</strong></a> | <a href="#D"><strong>D</strong></a> | <a href="#E"><strong>E</strong></a> | <a href="#G"><strong>G</strong></a> | <a href="#H"><strong>H</strong></a> | <a href="#I"><strong>I</strong></a> | <a href="#J"><strong>J</strong></a> | <a href="#L"><strong>L</strong></a> | <a href="#M"><strong>M</strong></a> | <a href="#P"><strong>P</strong></a> | <a href="#R"><strong>R</strong></a> | <a href="#S"><strong>S</strong></a> | <a href="#T"><strong>T</strong></a></div>
+</section>
+<section id="_" class="genindex-section">
+  <h2>_</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.BaseCache.__contains__">__contains__() (cache3.BaseCache method)</a>
+</li>
+        <li><a href="api.html#cache3.BaseCache.__delitem__">__delitem__() (cache3.BaseCache method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.SimpleCache.__delitem__">(cache3.SimpleCache method)</a>
+</li>
+          <li><a href="api.html#cache3.SimpleDiskCache.__delitem__">(cache3.SimpleDiskCache method)</a>
+</li>
+        </ul></li>
+        <li><a href="api.html#cache3.BaseCache.__getitem__">__getitem__() (cache3.BaseCache method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.SimpleCache.__getitem__">(cache3.SimpleCache method)</a>
+</li>
+          <li><a href="api.html#cache3.SimpleDiskCache.__getitem__">(cache3.SimpleDiskCache method)</a>
+</li>
+        </ul></li>
+        <li><a href="api.html#cache3.BaseCache.__init__">__init__() (cache3.BaseCache method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.SimpleCache.__init__">(cache3.SimpleCache method)</a>
+</li>
+          <li><a href="api.html#cache3.SimpleDiskCache.__init__">(cache3.SimpleDiskCache method)</a>
+</li>
+        </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.BaseCache.__iter__">__iter__() (cache3.BaseCache method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.SimpleCache.__iter__">(cache3.SimpleCache method)</a>
+</li>
+          <li><a href="api.html#cache3.SimpleDiskCache.__iter__">(cache3.SimpleDiskCache method)</a>
+</li>
+        </ul></li>
+        <li><a href="api.html#cache3.BaseCache.__len__">__len__() (cache3.BaseCache method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.SimpleCache.__len__">(cache3.SimpleCache method)</a>
+</li>
+          <li><a href="api.html#cache3.SimpleDiskCache.__len__">(cache3.SimpleDiskCache method)</a>
+</li>
+        </ul></li>
+        <li><a href="api.html#cache3.BaseCache.__repr__">__repr__() (cache3.BaseCache method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.SimpleDiskCache.__repr__">(cache3.SimpleDiskCache method)</a>
+</li>
+        </ul></li>
+        <li><a href="api.html#cache3.BaseCache.__setitem__">__setitem__() (cache3.BaseCache method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.SimpleCache.__setitem__">(cache3.SimpleCache method)</a>
+</li>
+          <li><a href="api.html#cache3.SimpleDiskCache.__setitem__">(cache3.SimpleDiskCache method)</a>
+</li>
+        </ul></li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="B" class="genindex-section">
+  <h2>B</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.BaseCache">BaseCache (class in cache3)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="C" class="genindex-section">
+  <h2>C</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li>
+    cache3
+
+        <ul>
+          <li><a href="api.html#module-cache3">module</a>
+</li>
+        </ul></li>
+        <li><a href="api.html#cache3.BaseCache.clear">clear() (cache3.BaseCache method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.SimpleCache.clear">(cache3.SimpleCache method)</a>
+</li>
+          <li><a href="api.html#cache3.SimpleDiskCache.clear">(cache3.SimpleDiskCache method)</a>
+</li>
+        </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.BaseCache.config">config() (cache3.BaseCache method)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="D" class="genindex-section">
+  <h2>D</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.BaseCache.decr">decr() (cache3.BaseCache method)</a>
+</li>
+        <li><a href="api.html#cache3.BaseCache.delete">delete() (cache3.BaseCache method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.SimpleCache.delete">(cache3.SimpleCache method)</a>
+</li>
+          <li><a href="api.html#cache3.SimpleDiskCache.delete">(cache3.SimpleDiskCache method)</a>
+</li>
+        </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.BaseCache.deserialize">deserialize() (cache3.BaseCache static method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.PickleMixin.deserialize">(cache3.PickleMixin static method)</a>
+</li>
+        </ul></li>
+        <li><a href="api.html#cache3.DiskCache">DiskCache (class in cache3)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="E" class="genindex-section">
+  <h2>E</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.BaseCache.evictor">evictor (cache3.BaseCache property)</a>
+</li>
+        <li><a href="api.html#cache3.BaseCache.ex_set">ex_set() (cache3.BaseCache method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.SimpleCache.ex_set">(cache3.SimpleCache method)</a>
+</li>
+          <li><a href="api.html#cache3.SimpleDiskCache.ex_set">(cache3.SimpleDiskCache method)</a>
+</li>
+        </ul></li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="G" class="genindex-section">
+  <h2>G</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.BaseCache.get">get() (cache3.BaseCache method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.SimpleCache.get">(cache3.SimpleCache method)</a>
+</li>
+          <li><a href="api.html#cache3.SimpleDiskCache.get">(cache3.SimpleDiskCache method)</a>
+</li>
+        </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.BaseCache.get_backend_timeout">get_backend_timeout() (cache3.BaseCache method)</a>
+</li>
+        <li><a href="api.html#cache3.BaseCache.get_many">get_many() (cache3.BaseCache method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.SimpleDiskCache.get_many">(cache3.SimpleDiskCache method)</a>
+</li>
+        </ul></li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="H" class="genindex-section">
+  <h2>H</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.BaseCache.has_key">has_key() (cache3.BaseCache method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.SimpleCache.has_key">(cache3.SimpleCache method)</a>
+</li>
+          <li><a href="api.html#cache3.SimpleDiskCache.has_key">(cache3.SimpleDiskCache method)</a>
+</li>
+        </ul></li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="I" class="genindex-section">
+  <h2>I</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.BaseCache.incr">incr() (cache3.BaseCache method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.SimpleCache.incr">(cache3.SimpleCache method)</a>
+</li>
+          <li><a href="api.html#cache3.SimpleDiskCache.incr">(cache3.SimpleDiskCache method)</a>
+</li>
+        </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.BaseCache.inspect">inspect() (cache3.BaseCache method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.SimpleCache.inspect">(cache3.SimpleCache method)</a>
+</li>
+          <li><a href="api.html#cache3.SimpleDiskCache.inspect">(cache3.SimpleDiskCache method)</a>
+</li>
+        </ul></li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="J" class="genindex-section">
+  <h2>J</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.JsonDiskCache">JsonDiskCache (class in cache3)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.JSONMixin">JSONMixin (class in cache3)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="L" class="genindex-section">
+  <h2>L</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.SimpleDiskCache.location">location (cache3.SimpleDiskCache attribute)</a>
+</li>
+        <li><a href="api.html#cache3.SimpleCache.LOCK">LOCK (cache3.SimpleCache attribute)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.SafeCache.LOCK">LOCK() (cache3.SafeCache method)</a>
+</li>
+        <li><a href="api.html#cache3.SimpleDiskCache.lru_evict">lru_evict() (cache3.SimpleDiskCache method)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="M" class="genindex-section">
+  <h2>M</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.BaseCache.memoize">memoize() (cache3.BaseCache method)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li>
+    module
+
+        <ul>
+          <li><a href="api.html#module-cache3">cache3</a>
+</li>
+        </ul></li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="P" class="genindex-section">
+  <h2>P</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.PickleMixin">PickleMixin (class in cache3)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="R" class="genindex-section">
+  <h2>R</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.BaseCache.restore_key">restore_key() (cache3.BaseCache method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.SimpleCache.restore_key">(cache3.SimpleCache method)</a>
+</li>
+          <li><a href="api.html#cache3.SimpleDiskCache.restore_key">(cache3.SimpleDiskCache method)</a>
+</li>
+        </ul></li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="S" class="genindex-section">
+  <h2>S</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.SafeCache">SafeCache (class in cache3)</a>
+</li>
+        <li><a href="api.html#cache3.BaseCache.serialize">serialize() (cache3.BaseCache static method)</a>
+</li>
+        <li><a href="api.html#cache3.BaseCache.set">set() (cache3.BaseCache method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.SimpleCache.set">(cache3.SimpleCache method)</a>
+</li>
+          <li><a href="api.html#cache3.SimpleDiskCache.set">(cache3.SimpleDiskCache method)</a>
+</li>
+        </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.SimpleCache">SimpleCache (class in cache3)</a>
+</li>
+        <li><a href="api.html#cache3.SimpleDiskCache">SimpleDiskCache (class in cache3)</a>
+</li>
+        <li><a href="api.html#cache3.BaseCache.store_key">store_key() (cache3.BaseCache method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.SimpleCache.store_key">(cache3.SimpleCache method)</a>
+</li>
+          <li><a href="api.html#cache3.SimpleDiskCache.store_key">(cache3.SimpleDiskCache method)</a>
+</li>
+        </ul></li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="T" class="genindex-section">
+  <h2>T</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.BaseCache.touch">touch() (cache3.BaseCache method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.SimpleCache.touch">(cache3.SimpleCache method)</a>
+</li>
+          <li><a href="api.html#cache3.SimpleDiskCache.touch">(cache3.SimpleDiskCache method)</a>
+</li>
+        </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.BaseCache.ttl">ttl() (cache3.BaseCache method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.SimpleCache.ttl">(cache3.SimpleCache method)</a>
+</li>
+          <li><a href="api.html#cache3.SimpleDiskCache.ttl">(cache3.SimpleDiskCache method)</a>
+</li>
+        </ul></li>
+    </ul></td>
+  </tr></table>
+</section>
+
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/scripts/furo.js"></script>
+    </body>
+</html>

@@ -1,0 +1,582 @@
+<!doctype html>
+<html class="no-js">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="API" href="api.html" /><link rel="prev" title="pycache3: Python3 cache library" href="index.html" />
+
+    <meta name="generator" content="sphinx-4.5.0, furo 2022.04.07"/>
+        <title>Overview - Python 0.1.2 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=68f4518137b9aefe99b631505a2064c3c42c9852" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  --color-brand-primary: #7C4DFF;
+  --color-brand-content: #7C4DFF;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-half" viewBox="0 0 24 24">
+    <title>Auto light/dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M13 12h5" />
+      <path d="M13 15h4" />
+      <path d="M13 18h1" />
+      <path d="M13 9h4" />
+      <path d="M13 6h1" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="index.html"><div class="brand">Python 0.1.2 documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
+  
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="_static/logo.png" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="_static/logo.png" alt="Dark Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">Python 0.1.2 documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
+  <input class="sidebar-search" placeholder=Search name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#installation">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#quick-start">Quick start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#memory-based-cache">memory-based cache</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#disk-based-cache">disk-based cache</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#mixin-extend">Mixin &amp; Extend</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
+</ul>
+
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container"><div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main">
+          <section id="overview">
+<h1>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">#</a></h1>
+<p><a class="reference internal" href="index.html"><span class="doc">Cache3</span></a> supports both <strong>memory</strong> and <strong>disk</strong> cache backends.</p>
+<p><strong>Memory-based</strong> cache has good performance but does not support data persistence.</p>
+<p><strong>Disk-based</strong> caches support persistence but have slightly lower performance.</p>
+<p>Regardless of which cache is used, they all follow the same API, which means that the backend implementation of the cache can be switched at will without cost.
+If the built-in caching strategies are not suitable for your specific business, you can quickly build a suitable cache based on them. If you really want to do that, <a class="reference internal" href="#extend"><span class="std std-ref">Mixin &amp; Extend</span></a></p>
+</section>
+<section id="installation">
+<span id="id1"></span><h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">#</a></h1>
+<p>To use cache3, first install it using pip:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp gp-VirtualEnv">(.cache3)</span> <span class="gp">$ </span>pip install -U cache3
+</pre></div>
+</div>
+<p>or install it from git</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp gp-VirtualEnv">(.cache3)</span> <span class="gp">$ </span>pip install git+https://github.com/VenusMonkey/Cache3.git
+</pre></div>
+</div>
+<p>or download source and install</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>git clone git@github.com:VenusMonkey/Cache3.git
+<span class="gp">$ </span><span class="nb">cd</span> Cache3
+<span class="gp">$ </span>python setup.py install
+</pre></div>
+</div>
+</section>
+<section id="quick-start">
+<h1>Quick start<a class="headerlink" href="#quick-start" title="Permalink to this headline">#</a></h1>
+<p>Creating a cache is so easy, and all cache parameters are set to conservative defaults. Default is a good choice if you don’t want too much detail, but it’s not guaranteed to be efficient.</p>
+<p>In <strong>TODO SETTING</strong> you can know more detailed parameters and configuration information</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">from</span> <span class="nn">cache3</span> <span class="kn">import</span> <span class="n">SafeCache</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">cache</span> <span class="o">=</span> <span class="n">SafeCache</span><span class="p">()</span>
+
+<span class="c1"># Default cache name: `default.cache3`, timeout:300s</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">cache</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="o">&lt;</span><span class="n">SafeCache</span> <span class="n">name</span><span class="o">=</span><span class="n">default</span><span class="o">.</span><span class="n">cache3</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">300.00</span><span class="o">&gt;</span>
+
+<span class="c1"># Default max size  1 &lt;&lt; 24 (16M)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">max_size</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="mi">16777216</span>
+
+<span class="c1"># Default key evict policy</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">5</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">evict</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">5</span><span class="p">]:</span> <span class="s1">'lru_evict'</span>
+</pre></div>
+</div>
+<section id="set-get-delete-del-has-key-in">
+<h2>set, get, delete(del), has_key(in)<a class="headerlink" href="#set-get-delete-del-has-key-in" title="Permalink to this headline">#</a></h2>
+<p>set an item, get a value, and delete a key using the usual operators:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">6</span><span class="p">]:</span> <span class="n">cache</span><span class="p">[</span><span class="s1">'name'</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'clark monkey'</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">7</span><span class="p">]:</span> <span class="n">cache</span><span class="p">[</span><span class="s1">'name'</span><span class="p">]</span>     <span class="c1"># get name</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">7</span><span class="p">]:</span> <span class="s1">'clark monkey'</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">8</span><span class="p">]:</span> <span class="k">del</span> <span class="n">cache</span><span class="p">[</span><span class="s1">'name'</span><span class="p">]</span>     <span class="c1"># delete key from cache</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">9</span><span class="p">]:</span> <span class="s1">'name'</span> <span class="ow">in</span> <span class="n">cache</span>    <span class="c1"># default tag</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">9</span><span class="p">]:</span> <span class="kc">False</span>
+</pre></div>
+</div>
+<p>The dictionary-like operation is simple, but the <strong>tag</strong> and <strong>timeout</strong> cannot be specified.
+If you want to specify these parameters, <a class="reference internal" href="api.html#cache3.BaseCache.get" title="cache3.BaseCache.get"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get</span></code></a>, <a class="reference internal" href="api.html#cache3.BaseCache.set" title="cache3.BaseCache.set"><code class="xref py py-meth docutils literal notranslate"><span class="pre">set</span></code></a>, <a class="reference internal" href="api.html#cache3.BaseCache.ex_set" title="cache3.BaseCache.ex_set"><code class="xref py py-meth docutils literal notranslate"><span class="pre">ex_set</span></code></a>, <a class="reference internal" href="api.html#cache3.BaseCache.delete" title="cache3.BaseCache.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a> are good choices.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># set item</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">10</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">'name'</span><span class="p">,</span> <span class="s1">'venus'</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">10</span><span class="p">]:</span> <span class="kc">True</span>
+
+<span class="c1"># get ttl</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">11</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">ttl</span><span class="p">(</span><span class="s1">'name'</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">11</span><span class="p">]:</span> <span class="mf">299.01095983695984</span>
+
+<span class="c1"># Get value</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">12</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'name'</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">12</span><span class="p">]:</span> <span class="s1">'venus'</span>
+
+<span class="c1"># Delete</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">13</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s1">'name'</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">13</span><span class="p">]:</span> <span class="kc">True</span>
+
+<span class="c1"># Has key</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">14</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="s1">'name'</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">14</span><span class="p">]:</span> <span class="kc">False</span>
+</pre></div>
+</div>
+<p>Use tag to group keys, which allows key duplication.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Set item with tag</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">15</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">'name'</span><span class="p">,</span> <span class="s1">'venus'</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s1">'class:1'</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">15</span><span class="p">]:</span> <span class="kc">True</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">16</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">'name'</span><span class="p">,</span> <span class="s1">'apollo'</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s1">'class:2'</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">16</span><span class="p">]:</span> <span class="kc">True</span>
+
+<span class="c1"># If tag is not specified, the value cannot be found correctly</span>
+<span class="c1"># Tag is similar to namespace, keys are divided into spaces by tag</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">17</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'name'</span><span class="p">)</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">18</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'name'</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s1">'class:1'</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">18</span><span class="p">]:</span> <span class="s1">'venus'</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">19</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'name'</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s1">'class:2'</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">19</span><span class="p">]:</span> <span class="s1">'apollo'</span>
+
+<span class="c1"># Set item with timeout</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">20</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">'count'</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s1">'class:1'</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">20</span><span class="p">]:</span> <span class="kc">True</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">21</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">ttl</span><span class="p">(</span><span class="s1">'count'</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s1">'class:1'</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">21</span><span class="p">]:</span> <span class="mf">59.076417922973633</span>
+</pre></div>
+</div>
+</section>
+<section id="ex-set">
+<h2>ex_set<a class="headerlink" href="#ex-set" title="Permalink to this headline">#</a></h2>
+<p>It ensures <strong>set</strong> is safety through exclusive locks. <a class="reference internal" href="api.html#cache3.SafeCache" title="cache3.SafeCache"><code class="xref py py-class docutils literal notranslate"><span class="pre">SafeCache</span></code></a> uses <a class="reference external" href="https://docs.python.org/3/library/threading.html#threading.Lock">threading.Lock</a>, and <a class="reference internal" href="#disk-based"><span class="std std-ref">disk-based cache</span></a> uses file locks, so they are process-safe.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># clear the cache</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">22</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">23</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">'name'</span><span class="p">,</span> <span class="s1">'venus'</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">23</span><span class="p">]:</span> <span class="kc">True</span>
+
+<span class="c1"># Mutex set item</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">24</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">ex_set</span><span class="p">(</span><span class="s1">'name'</span><span class="p">,</span> <span class="s1">'apollo'</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">24</span><span class="p">]:</span> <span class="kc">False</span>
+
+<span class="c1"># Delete the item and try again</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">25</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s1">'name'</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">25</span><span class="p">]:</span> <span class="kc">True</span>
+
+<span class="c1"># Reset success</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">26</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">ex_set</span><span class="p">(</span><span class="s1">'name'</span><span class="p">,</span> <span class="s1">'apollo'</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">26</span><span class="p">]:</span> <span class="kc">True</span>
+</pre></div>
+</div>
+</section>
+<section id="get-many">
+<h2>get_many<a class="headerlink" href="#get-many" title="Permalink to this headline">#</a></h2>
+<p>Get many items at one time, support tag parameter, and only one tag can be specified</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Clear the cache</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">27</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+<span class="c1"># Set items</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">28</span><span class="p">]:</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+    <span class="o">...</span><span class="p">:</span>     <span class="n">cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s1">'test:get_many'</span><span class="p">)</span>
+    <span class="o">...</span><span class="p">:</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">29</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">get_many</span><span class="p">([</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">)],</span> <span class="n">tag</span><span class="o">=</span><span class="s1">'test:get_many'</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">29</span><span class="p">]:</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="mi">2</span><span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="memoize">
+<h2>memoize<a class="headerlink" href="#memoize" title="Permalink to this headline">#</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="api.html#cache3.BaseCache.memoize" title="cache3.BaseCache.memoize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">memoize</span></code></a> This decorator is insensitive to parameters.</p>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cache3</span> <span class="kn">import</span> <span class="n">SimpleCache</span>
+
+<span class="n">cache</span><span class="p">:</span> <span class="n">SimpleCache</span> <span class="o">=</span> <span class="n">SimpleCache</span><span class="p">()</span>
+
+<span class="nd">@cache</span><span class="o">.</span><span class="n">memoize</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s1">'cached:page'</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">query_pages</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+    <span class="k">return</span> <span class="sa">b</span><span class="s1">'&lt;h1&gt; Hello Cache3 &lt;/h1&gt;'</span>
+
+<span class="c1"># Note: This decorator is insensitive to parameters.</span>
+</pre></div>
+</div>
+</section>
+<section id="inspect">
+<h2>inspect<a class="headerlink" href="#inspect" title="Permalink to this headline">#</a></h2>
+<p><a class="reference internal" href="api.html#cache3.BaseCache.inspect" title="cache3.BaseCache.inspect"><code class="xref py py-meth docutils literal notranslate"><span class="pre">inspect</span></code></a> can obtain almost all the information of the key. Because the storage backend is unknown, there are differences between different implementations.</p>
+<ul class="simple">
+<li><p>Memory backend</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1">#  Based memory cache</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="n">cache</span><span class="p">:</span> <span class="n">SafeCache</span> <span class="o">=</span> <span class="n">SafeCache</span><span class="p">()</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">cache</span><span class="p">[</span><span class="s1">'name'</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'Venus'</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">inspect</span><span class="p">(</span><span class="s1">'name'</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="p">{</span>
+ <span class="s1">'key'</span><span class="p">:</span> <span class="s1">'name'</span><span class="p">,</span>
+ <span class="s1">'store_key'</span><span class="p">:</span> <span class="s1">'name:default'</span><span class="p">,</span>
+ <span class="s1">'store_value'</span><span class="p">:</span> <span class="s1">'Venus'</span><span class="p">,</span>
+ <span class="s1">'value'</span><span class="p">:</span> <span class="s1">'Venus'</span><span class="p">,</span>
+ <span class="s1">'expire'</span><span class="p">:</span> <span class="mf">1644718648.995299</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Disk backend</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1">#  Based disk cache</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="n">cache</span><span class="p">:</span> <span class="n">DiskCache</span> <span class="o">=</span> <span class="n">DiskCache</span><span class="p">()</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">cache</span><span class="p">[</span><span class="s1">'name'</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'Ares'</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">inspect</span><span class="p">(</span><span class="s1">'name'</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="p">{</span>
+    <span class="s1">'key'</span><span class="p">:</span> <span class="s1">'name'</span><span class="p">,</span>
+    <span class="s1">'store'</span><span class="p">:</span> <span class="mf">1644718388.4478312</span><span class="p">,</span>
+    <span class="s1">'expire'</span><span class="p">:</span> <span class="mf">1644718688.4478312</span><span class="p">,</span>
+    <span class="s1">'access'</span><span class="p">:</span> <span class="mf">1644718388.4478312</span><span class="p">,</span>
+    <span class="s1">'access_count'</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="s1">'tag'</span><span class="p">:</span> <span class="s1">'default'</span><span class="p">,</span>
+    <span class="s1">'value'</span><span class="p">:</span> <span class="s1">'cache3'</span><span class="p">,</span>
+    <span class="s1">'store_key'</span><span class="p">:</span> <span class="s1">'name'</span><span class="p">,</span>
+    <span class="s1">'serial_value'</span><span class="p">:</span> <span class="s1">'Ares'</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="others">
+<h2>others<a class="headerlink" href="#others" title="Permalink to this headline">#</a></h2>
+<p>Some APIs that are not commonly used but are very useful: <a class="reference internal" href="api.html#cache3.BaseCache.ttl" title="cache3.BaseCache.ttl"><code class="xref py py-meth docutils literal notranslate"><span class="pre">ttl</span></code></a>, <a class="reference internal" href="api.html#cache3.BaseCache.touch" title="cache3.BaseCache.touch"><code class="xref py py-meth docutils literal notranslate"><span class="pre">touch</span></code></a>, <a class="reference internal" href="api.html#cache3.BaseCache.clear" title="cache3.BaseCache.clear"><code class="xref py py-meth docutils literal notranslate"><span class="pre">clear</span></code></a></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Get the ttl</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">ttl</span><span class="p">(</span><span class="s1">'name'</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="mf">297.9396250247955</span>
+
+<span class="c1"># touch</span>
+<span class="c1"># Touch the key and reset ttl</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">touch</span><span class="p">(</span><span class="s1">'name'</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="kc">True</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">ttl</span><span class="p">(</span><span class="s1">'name'</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="mf">98.66487669944763</span>
+</pre></div>
+</div>
+</section>
+<section id="iterable">
+<h2>iterable<a class="headerlink" href="#iterable" title="Permalink to this headline">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># It's iterable.</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+<span class="o">...</span><span class="p">:</span>     <span class="n">cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s1">'test:get_many'</span><span class="p">)</span>
+<span class="o">...</span><span class="p">:</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="nb">list</span><span class="p">(</span><span class="n">cache</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">'default'</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'default'</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">'default'</span><span class="p">)]</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">cache</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">'default'</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'default'</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">'default'</span><span class="p">))</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="memory-based-cache">
+<span id="memory-based"></span><h1>memory-based cache<a class="headerlink" href="#memory-based-cache" title="Permalink to this headline">#</a></h1>
+<p>Memory-based caches will completely lose the data in the cache when the program crashes or exits, in other words, they do not support data persistence.</p>
+<section id="simplecache">
+<h2>SimpleCache<a class="headerlink" href="#simplecache" title="Permalink to this headline">#</a></h2>
+<p><a class="reference internal" href="api.html#cache3.SimpleCache" title="cache3.SimpleCache"><code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleCache</span></code></a> is a thread-unsafe cache, which aims to provide high performance but does not guarantee data safety under multi-threading. <a class="reference internal" href="api.html#cache3.SafeCache" title="cache3.SafeCache"><code class="xref py py-class docutils literal notranslate"><span class="pre">SafeCache</span></code></a> is a good choice if you want thread safety.</p>
+</section>
+<section id="safecache">
+<h2>SafeCache<a class="headerlink" href="#safecache" title="Permalink to this headline">#</a></h2>
+<p><a class="reference internal" href="api.html#cache3.SafeCache" title="cache3.SafeCache"><code class="xref py py-class docutils literal notranslate"><span class="pre">SafeCache</span></code></a> is a thread-safe cache. It has exactly the same implementation as <a class="reference internal" href="api.html#cache3.SimpleCache" title="cache3.SimpleCache"><code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleCache</span></code></a>, based on Python’s <a class="reference external" href="https://docs.python.org/3/library/collections.html#collections.OrderedDict">OrderedDict</a>, the difference is the type of Lock, <a class="reference internal" href="api.html#cache3.SimpleCache" title="cache3.SimpleCache"><code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleCache</span></code></a> Lock is an empty lock, while  <a class="reference internal" href="api.html#cache3.SafeCache" title="cache3.SafeCache"><code class="xref py py-class docutils literal notranslate"><span class="pre">SafeCache</span></code></a> uses <a class="reference external" href="https://docs.python.org/3/library/threading.html#threading.Lock">threading.Lock</a> to ensure its thread safety.</p>
+</section>
+</section>
+<section id="disk-based-cache">
+<span id="disk-based"></span><h1>disk-based cache<a class="headerlink" href="#disk-based-cache" title="Permalink to this headline">#</a></h1>
+<p>The disk-based cache backend is implemented in <a class="reference external" href="https://www.sqlite.org/index.html">SQLite3</a> because it is lightweight enough and performs well.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Since the disk cache is based on <a class="reference external" href="https://www.sqlite.org/index.html">SQLite3</a>, even after a series of optimizations, it still needs to be carefully considered whether it will become a concurrency bottleneck. In fact, in most cases it is sufficient.</p>
+</div>
+<section id="simplediskcache">
+<h2>SimpleDiskCache<a class="headerlink" href="#simplediskcache" title="Permalink to this headline">#</a></h2>
+<p><a class="reference internal" href="api.html#cache3.SimpleDiskCache" title="cache3.SimpleDiskCache"><code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleDiskCache</span></code></a> is a base class for all disk cache.</p>
+<p>Most of the methods of disk cache are implemented in this class. It uses the <a class="reference internal" href="api.html#cache3.BaseCache.serialize" title="cache3.BaseCache.serialize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">serialize()</span></code></a> and <a class="reference internal" href="api.html#cache3.BaseCache.deserialize" title="cache3.BaseCache.deserialize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">deserialize()</span></code></a> methods. Therefore, there are strict requirements for key and value types. <strong>That means key and value can only be one of the types int, float, string, bytes and bool supported by SQLite.</strong></p>
+<p>Typically, subclasses override the <a class="reference internal" href="api.html#cache3.BaseCache.serialize" title="cache3.BaseCache.serialize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">serialize()</span></code></a> and <a class="reference internal" href="api.html#cache3.BaseCache.deserialize" title="cache3.BaseCache.deserialize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">deserialize()</span></code></a> methods of key and value to support more types. This is also true for some default implementations, such as <a class="reference internal" href="api.html#cache3.DiskCache" title="cache3.DiskCache"><code class="xref py py-class docutils literal notranslate"><span class="pre">DiskCache</span></code></a> and <a class="reference internal" href="api.html#cache3.JsonDiskCache" title="cache3.JsonDiskCache"><code class="xref py py-class docutils literal notranslate"><span class="pre">JsonDiskCache</span></code></a></p>
+</section>
+<section id="diskcache">
+<h2>DiskCache<a class="headerlink" href="#diskcache" title="Permalink to this headline">#</a></h2>
+<p><a class="reference internal" href="api.html#cache3.DiskCache" title="cache3.DiskCache"><code class="xref py py-class docutils literal notranslate"><span class="pre">DiskCache</span></code></a> overrides <a class="reference internal" href="api.html#cache3.SimpleDiskCache" title="cache3.SimpleDiskCache"><code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleDiskCache</span></code></a>’s <a class="reference internal" href="api.html#cache3.BaseCache.serialize" title="cache3.BaseCache.serialize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">serialize()</span></code></a> and <a class="reference internal" href="api.html#cache3.BaseCache.deserialize" title="cache3.BaseCache.deserialize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">deserialize()</span></code></a> methods by inheriting <a class="reference internal" href="api.html#cache3.PickleMixin" title="cache3.PickleMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">PickleMixin</span></code></a>  mixins to support more data types, but has no difference with <a class="reference internal" href="api.html#cache3.SimpleDiskCache" title="cache3.SimpleDiskCache"><code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleDiskCache</span></code></a>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">DiskCache</span><span class="p">(</span><span class="n">PickleMixin</span><span class="p">,</span> <span class="n">SimpleDiskCache</span><span class="p">):</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><a class="reference internal" href="api.html#cache3.JsonDiskCache" title="cache3.JsonDiskCache"><code class="xref py py-class docutils literal notranslate"><span class="pre">JsonDiskCache</span></code></a></p></li>
+</ul>
+</section>
+<section id="jsondiskcache">
+<h2>JsonDiskCache<a class="headerlink" href="#jsondiskcache" title="Permalink to this headline">#</a></h2>
+<p><a class="reference internal" href="api.html#cache3.JsonDiskCache" title="cache3.JsonDiskCache"><code class="xref py py-class docutils literal notranslate"><span class="pre">JsonDiskCache</span></code></a> similar to <a class="reference internal" href="api.html#cache3.DiskCache" title="cache3.DiskCache"><code class="xref py py-class docutils literal notranslate"><span class="pre">DiskCache</span></code></a>, except that he inherits <a class="reference internal" href="api.html#cache3.JSONMixin" title="cache3.JSONMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">JSONMixin</span></code></a>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">JsonDiskCache</span><span class="p">(</span><span class="n">JSONMixin</span><span class="p">,</span> <span class="n">SimpleDiskCache</span><span class="p">):</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="mixin-extend">
+<span id="extend"></span><h1>Mixin &amp; Extend<a class="headerlink" href="#mixin-extend" title="Permalink to this headline">#</a></h1>
+<p>TODO …</p>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="api.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">API</div>
+              </div>
+              <svg><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="index.html">
+              <svg><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Home</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            Contents
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Overview</a></li>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#quick-start">Quick start</a><ul>
+<li><a class="reference internal" href="#set-get-delete-del-has-key-in">set, get, delete(del), has_key(in)</a></li>
+<li><a class="reference internal" href="#ex-set">ex_set</a></li>
+<li><a class="reference internal" href="#get-many">get_many</a></li>
+<li><a class="reference internal" href="#memoize">memoize</a></li>
+<li><a class="reference internal" href="#inspect">inspect</a></li>
+<li><a class="reference internal" href="#others">others</a></li>
+<li><a class="reference internal" href="#iterable">iterable</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#memory-based-cache">memory-based cache</a><ul>
+<li><a class="reference internal" href="#simplecache">SimpleCache</a></li>
+<li><a class="reference internal" href="#safecache">SafeCache</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#disk-based-cache">disk-based cache</a><ul>
+<li><a class="reference internal" href="#simplediskcache">SimpleDiskCache</a></li>
+<li><a class="reference internal" href="#diskcache">DiskCache</a></li>
+<li><a class="reference internal" href="#jsondiskcache">JsonDiskCache</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#mixin-extend">Mixin &amp; Extend</a></li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/scripts/furo.js"></script>
+    </body>
+</html>
