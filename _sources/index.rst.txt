@@ -1,7 +1,13 @@
-.. include:: ../../README.rst
-
 Welcome to cache3's documentation!
 ==================================
+.. image:: https://img.shields.io/badge/LICENSE-MIT-green
+    :alt: LICENSE
+
+.. image:: https://img.shields.io/badge/version-0.1.0-informational
+    :alt: Version
+
+.. image:: https://img.shields.io/badge/python-3.5-blueviolet
+    :alt: Python Version
 
 **Cache3** is a MIT licensed  safe and lightweight cache library, written
 in pure-Python.
