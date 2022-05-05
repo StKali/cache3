@@ -34,7 +34,7 @@ or download source and install
 .. code-block:: console
 
     $ git clone git@github.com:VenusMonkey/Cache3.git
-    $ cd Cache3
+    $ cd cache3
     $ python setup.py install
 
 
@@ -43,7 +43,7 @@ Quick start
 
 Creating a cache is so easy, and all cache parameters are set to conservative defaults. Default is a good choice if you don't want too much detail, but it's not guaranteed to be efficient.
 
-In **TODO SETTING** you can know more detailed parameters and configuration information
+In class docs you can know more detailed parameters and configuration information.
 
 .. code-block:: python
 
