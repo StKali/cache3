@@ -2,9 +2,9 @@ Welcome to cache3's documentation!
 ==================================
 
 .. image:: https://img.shields.io/badge/LICENSE-MIT-green
-    :target: https://github.com/VenusMonkey/cache3/blob/master/LICENSE
-.. image:: https://img.shields.io/badge/version-0.1.2-informational
-    :target: https://pypi.org/project/pycache3
+    :target: https://github.com/StKali/cache3/blob/master/LICENSE
+.. image:: https://img.shields.io/badge/version-0.2.0-informational
+    :target: https://pypi.org/project/cache3
 .. image:: https://img.shields.io/badge/python-3.5+-blueviolet
     :target: https://www.python.org
 
