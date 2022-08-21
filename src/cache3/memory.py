@@ -6,10 +6,10 @@
 from collections import OrderedDict
 from threading import Lock
 from time import time as current
-from typing import Dict, Any, Type, Union, Optional, NoReturn, Tuple, List, Callable
+from typing import Dict, Any, Type, Union, Optional, NoReturn, Tuple, Callable
 
 from cache3 import AbstractCache
-from cache3.setting import DEFAULT_TIMEOUT, DEFAULT_TAG
+from cache3.setting import DEFAULT_TIMEOUT, DEFAULT_TAG, LFU
 from cache3.utils import NullContext
 
 LK: Type = Union[NullContext, Lock]
@@ -19,7 +19,7 @@ SK: Type = Tuple[Any, TG]
 Time: Type = float
 
 VT: Type = int
-VH = Callable[[Any, VT], NoReturn]
+VH: Type = Callable[[Any, VT], NoReturn]
 
 VT_SET = 0
 VT_GET = 1
@@ -27,6 +27,7 @@ VT_INCR = 2
 
 _caches: Dict[Any, Any] = {}
 _expire_info: Dict[Any, Any] = {}
+_visit_info: Dict[Any, Any] = {}
 _locks: Dict[Any, Any] = {}
 
 
@@ -63,6 +64,7 @@ class SimpleCache(AbstractCache):
             self.name, OrderedDict()
         )
         self._expire_info: Dict[SK, Any] = _expire_info.setdefault(self.name, {})
+        self._visit_info: Dict[SK, int] = _visit_info.setdefault(self.name, {})
         self._lock: LK = _locks.setdefault(self.name, self.LOCK())
 
     def set(
@@ -171,7 +173,7 @@ class SimpleCache(AbstractCache):
             self._cache.clear()
             self._expire_info.clear()
         else:
-            count = len(self._cache) // self.cull_size
+            count: int = len(self._cache) // self.cull_size
             for i in range(count):
                 store_key, _ = self._cache.popitem()
                 del self._expire_info[store_key]
@@ -216,7 +218,7 @@ class SimpleCache(AbstractCache):
         self._cache.move_to_end(store_key, last=False)
 
     def lfu_hook_visit(self, store_key: Any, vt: VT) -> NoReturn:
-        """"""
+        self._visit_info[store_key] += 1
 
     def fifo_hook_visit(self, store_key: Any, vt: VT) -> NoReturn:
         if vt == VT_SET:

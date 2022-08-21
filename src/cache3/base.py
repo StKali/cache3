@@ -25,10 +25,10 @@ except ImportError:
     import json
 
 Number: Type = Union[int, float]
-Time = float
+Time: Type = Optional[float]
 TG: Type = Optional[str]
-VT = int
-VH = Callable[[Any, VT], NoReturn]
+VT: Type = int
+VH: Type = Callable[[Any, VT], NoReturn]
 
 
 class CacheKeyWarning(RuntimeWarning):
@@ -242,23 +242,6 @@ class AbstractCache(ABC):
         Returns evict method if the ``_evict`` is a callable object, thrown
         warning otherwise.
         """
-
-        # evictor: Callable = getattr(self, self.evict, empty)
-        # if evictor is empty:
-        #     warnings.warn(
-        #         "Not found '%s' evict method, it will cause the"
-        #         "cache to grow without limit." % self.evict,
-        #         RuntimeWarning
-        #     )
-        #     # Just to return a callable object ~.
-        #     return object
-        #
-        # if not callable(evictor):
-        #     warnings.warn(
-        #         "Invalid evict '%s', It must a callable object." % evictor,
-        #         RuntimeWarning
-        #     )
-        #     return object
 
         # return evictor
 

@@ -4,7 +4,7 @@
 # Author: clarkmonkey@163.com
 
 from contextlib import AbstractContextManager
-from typing import Any, NoReturn
+from typing import Any, NoReturn, Optional, Callable
 
 # Compatible with multiple types.
 empty: Any = object()
@@ -32,30 +32,30 @@ class cached_property:
     """ Decorator that converts a method with a single self argument into a
     property cached on the instance.
     """
-    name = None
+    name: Optional[str] = None
 
     @staticmethod
-    def func(instance):
+    def func(instance) -> NoReturn:
         raise TypeError(
             'Cannot use cached_property instance without calling '
             '__set_name__() on it.'
         )
 
-    def __init__(self, func, name=None):
-        self.real_func = func
-        self.__doc__ = getattr(func, '__doc__')
+    def __init__(self, func: Callable, name: Optional[str] = None) -> None:
+        self.real_func: Callable = func
+        self.__doc__: str = getattr(func, '__doc__')
 
-    def __set_name__(self, owner, name):
+    def __set_name__(self, owner: Any, name: str) -> NoReturn:
         if self.name is None:
-            self.name = name
-            self.func = self.real_func
+            self.name: str = name
+            self.func: Callable = self.real_func
         elif name != self.name:
             raise TypeError(
                 "Cannot assign the same cached_property to two different names "
                 "(%r and %r)." % (self.name, name)
             )
 
-    def __get__(self, instance, cls=None):
+    def __get__(self, instance: Any, cls=None):
         """
         Call the function and put the return value in instance.__dict__ so that
         subsequent attribute access on the instance returns the cached value

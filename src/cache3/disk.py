@@ -14,7 +14,7 @@ from typing import (
 )
 
 from cache3 import AbstractCache
-from cache3.base import PickleMixin, JSONMixin
+from cache3.base import PickleMixin, JSONMixin, Number, TG, Time
 from cache3.setting import (
     DEFAULT_TIMEOUT, DEFAULT_TAG, DEFAULT_STORE, DEFAULT_SQLITE_TIMEOUT
 )
@@ -26,9 +26,6 @@ try:
 except ImportError:
     import json
 
-Number: Type = Union[int, float]
-TG: Type = Optional[str]
-Time: Type = Optional[float]
 PATH: Type = Union[Path, str]
 QY: Type = Callable[[Any], Cursor]
 ROW: Type = Optional[Tuple[Any]]
@@ -64,7 +61,7 @@ TABLES: Dict[str, Any] = {
             'CREATE TABLE IF NOT EXISTS `cache`('
             '`key` BLOB NOT NULL,'
             '`store` REAL NOT NULL,'
-            '`expire` REAL NOT NULL,'
+            '`expire` REAL,'
             '`access` REAL NOT NULL,'
             '`access_count` INTEGER DEFAULT 0,'
             '`tag` BLOB,'    # Don't set ``NOT NULL``
@@ -95,7 +92,7 @@ TABLES: Dict[str, Any] = {
 }
 
 
-def dict_factory(cursor: Cursor, row: ROW) -> Dict:
+def dict_factory(cursor: Cursor, row: ROW) -> Dict[str, Any]:
     """ Format query result to dict. """
     d: dict = dict()
     for idx, col in enumerate(cursor.description):
@@ -150,7 +147,7 @@ class SessionDescriptor:
         return True
 
     @staticmethod
-    def config_session(session: Connection, pragmas: Dict[str, Any]):
+    def config_session(session: Connection, pragmas: Dict[str, Any]) -> NoReturn:
 
         start: Time = current()
         script: str = ';'.join(
@@ -334,6 +331,21 @@ class SimpleDiskCache(AbstractCache):
         )
         values: List[Any] = [self.deserialize(i[0]) for i in cursor]
         return dict(zip(keys, values))
+
+    def iter(self, tag: TG) -> Iterator[Tuple[str, Any]]:
+
+        query_time: Time = current()
+        for line in self.sqlite(
+            'SELECT `key`, `value` '
+            'FROM `cache` '
+            'WHERE `tag` = ? AND (`expire` IS NULL OR `expire` > ?) '
+            'ORDER BY `store`',
+            (tag, query_time,)
+        ):
+            store_key, serial_value = line
+            key: str = self.restore_key(store_key)
+            value: Any = self.deserialize(serial_value)
+            yield key, value
 
     def touch(self, key: str, timeout: Number, tag: TG = DEFAULT_TAG) -> bool:
         """ Renew the key. When the key does not exist, false will be returned """
@@ -629,8 +641,8 @@ class SimpleDiskCache(AbstractCache):
             (now, expire, now, 0, tag, serial_value, rowid)
         ).rowcount == 1
 
-    def __iter__(self) -> Iterator:
-        """ This may take up a lot of memory, which needs special
+    def __iter__(self) -> Iterator[Tuple[str, Any, str]]:
+        """ Will take up a lot of memory, which needs special
         attention when there are a lot of data.
 
         Conservatively, this method is not recommended to be called
@@ -648,7 +660,6 @@ class SimpleDiskCache(AbstractCache):
             store_key, serial_value, tag = line
             key: str = self.restore_key(store_key)
             value: Any = self.deserialize(serial_value)
-
             yield key, value, tag
 
     def __repr__(self) -> str:
