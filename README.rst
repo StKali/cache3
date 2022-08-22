@@ -6,7 +6,7 @@ in pure-Python.
 
 .. image:: https://img.shields.io/badge/LICENSE-MIT-green
     :target: https://github.com/StKali/cache3/blob/master/LICENSE
-.. image:: https://img.shields.io/badge/version-0.2.0-informational
+.. image:: https://img.shields.io/badge/version-0.2.2-informational
     :target: https://pypi.org/project/cache3
 .. image:: https://img.shields.io/badge/python-3.5+-blueviolet
     :target: https://www.python.org
@@ -38,7 +38,6 @@ Feature
 - High performance
 - 100% test coverage
 - Extension friendly
-- Supports multiple eviction policies and is easy to scale
 - Supports multiple data types
 - Compatible with all platforms
 

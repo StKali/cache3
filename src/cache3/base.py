@@ -13,10 +13,9 @@ from typing import (
 
 from cache3.setting import (
     DEFAULT_TAG, DEFAULT_TIMEOUT, MAX_TIMEOUT, MIN_TIMEOUT, MAX_KEY_LENGTH,
-    DEFAULT_NAME, DEFAULT_MAX_SIZE, DEFAULT_EVICT, DEFAULT_CULL_SIZE, LFU,
-    FIFO, LRU
+    DEFAULT_NAME, DEFAULT_MAX_SIZE, DEFAULT_CULL_SIZE, LRU_EVICT
 )
-from cache3.utils import empty
+from cache3.utils import empty, cached_property
 from cache3.validate import NumberValidate, StringValidate, EnumerateValidate
 
 try:
@@ -36,7 +35,11 @@ class CacheKeyWarning(RuntimeWarning):
 
 
 class InvalidCacheKey(ValueError):
-    """ An Error thrown when the key invalid """
+    """ An error thrown when the key invalid """
+
+
+class NotImplementedEvictError(NotImplementedError):
+    """ An error thrown when not implement evict method """
 
 
 class AbstractCache(ABC):
@@ -55,9 +58,9 @@ class AbstractCache(ABC):
     """
 
     name: str = StringValidate(minsize=1, maxsize=MAX_KEY_LENGTH)
+    evict_method: str = EnumerateValidate(LRU_EVICT, )
     timeout: Number = NumberValidate(minvalue=MIN_TIMEOUT, maxvalue=MAX_TIMEOUT)
     max_size: int = NumberValidate(minvalue=0)
-    evict_type: str = EnumerateValidate(LRU, FIFO, LFU)
     cull_size: str = NumberValidate(minvalue=0)
 
     def __init__(
@@ -65,14 +68,14 @@ class AbstractCache(ABC):
             name: str = DEFAULT_NAME,
             timeout: Number = DEFAULT_TIMEOUT,
             max_size: int = DEFAULT_MAX_SIZE,
-            evict_type: str = DEFAULT_EVICT,
+            evict_method: str = LRU_EVICT,
             cull_size: int = DEFAULT_CULL_SIZE,
             **kwargs
     ) -> None:
         self.name: str = name
         self.timeout: Number = timeout
         self.max_size: int = max_size
-        self.evict_type: str = evict_type
+        self.evict_method: str = evict_method
         self.cull_size: int = cull_size
         self._kwargs: Dict[str, Any] = kwargs
 
@@ -227,8 +230,8 @@ class AbstractCache(ABC):
     def clear(self) -> bool:
         """ clear all caches. """
 
-    @abstractmethod
-    def evict(self) -> NoReturn:
+    @cached_property
+    def evict(self) -> Callable:
         """ Implementation of the cache eviction policy.
 
         The ``_evict`` parameter is used to determine the eviction policy.
@@ -239,11 +242,19 @@ class AbstractCache(ABC):
         the ``config()`` method. the mru_evict will be use, if cache.config(
         evict="mru_evict") and the cache has been implemented ``mru_evict()``.
 
-        Returns evict method if the ``_evict`` is a callable object, thrown
-        warning otherwise.
-        """
+        Returns:
+            evict method if the ``evict_method`` is a callable object
 
-        # return evictor
+        Raises:
+            NotImplementedEvictError thrown when ``evict_method`` not callable
+        """
+        evict: Callable = getattr(self, self.evict_method, None)
+        if not callable(evict):
+            raise NotImplementedEvictError(
+                "evict %s.%s is not callable" %
+                (self.__class__.__name__, self.evict_method)
+            )
+        return evict
 
     def __repr__(self) -> str:
         return "<%s name=%s timeout=%.2f>" % (

@@ -9,7 +9,7 @@ from time import time as current
 from typing import Dict, Any, Type, Union, Optional, NoReturn, Tuple, Callable
 
 from cache3 import AbstractCache
-from cache3.setting import DEFAULT_TIMEOUT, DEFAULT_TAG, LFU
+from cache3.setting import DEFAULT_TIMEOUT, DEFAULT_TAG
 from cache3.utils import NullContext
 
 LK: Type = Union[NullContext, Lock]
@@ -17,14 +17,6 @@ Number: Type = Union[int, float]
 TG: Type = Optional[str]
 SK: Type = Tuple[Any, TG]
 Time: Type = float
-
-VT: Type = int
-VH: Type = Callable[[Any, VT], NoReturn]
-
-VT_SET = 0
-VT_GET = 1
-VT_INCR = 2
-
 _caches: Dict[Any, Any] = {}
 _expire_info: Dict[Any, Any] = {}
 _visit_info: Dict[Any, Any] = {}
@@ -58,7 +50,6 @@ class SimpleCache(AbstractCache):
 
     def __init__(self, *args, **kwargs) -> None:
         super(SimpleCache, self).__init__(*args, **kwargs)
-        self.visit_hook: VH = getattr(self, f'{self.evict_type}_hook_visit')
         # Attributes _name, _timeout from validate.
         self._cache: OrderedDict[SK, Any] = _caches.setdefault(
             self.name, OrderedDict()
@@ -84,7 +75,7 @@ class SimpleCache(AbstractCache):
                 self._delete(store_key)
                 return default
             value: Any = self.deserialize(self._cache[store_key])
-            self.visit_hook(store_key, VT_GET)
+            self._cache.move_to_end(store_key, last=False)
         return value
 
     def ex_set(
@@ -143,7 +134,7 @@ class SimpleCache(AbstractCache):
             value: Any = self.deserialize(self._cache[store_key])
             serial_value: int = self.serialize(value + delta)
             self._cache[store_key] = serial_value
-            self.visit_hook(store_key, VT_INCR)
+            self._cache.move_to_end(store_key, last=False)
         return serial_value
 
     def has_key(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
@@ -168,7 +159,7 @@ class SimpleCache(AbstractCache):
             self._expire_info.clear()
         return True
 
-    def evict(self) -> NoReturn:
+    def lru(self) -> NoReturn:
         if self.cull_size == 0:
             self._cache.clear()
             self._expire_info.clear()
@@ -201,7 +192,7 @@ class SimpleCache(AbstractCache):
         if self.timeout and len(self) >= self.max_size:
             self.evict()
         self._cache[store_key] = value
-        self.visit_hook(store_key, VT_SET)
+        self._cache.move_to_end(store_key, last=False)
         self._expire_info[store_key] = self.get_backend_timeout(timeout)
         return True
 
@@ -213,16 +204,6 @@ class SimpleCache(AbstractCache):
 
     def __len__(self) -> int:
         return len(self._cache)
-
-    def lru_hook_visit(self, store_key: Any, vt: VT) -> NoReturn:
-        self._cache.move_to_end(store_key, last=False)
-
-    def lfu_hook_visit(self, store_key: Any, vt: VT) -> NoReturn:
-        self._visit_info[store_key] += 1
-
-    def fifo_hook_visit(self, store_key: Any, vt: VT) -> NoReturn:
-        if vt == VT_SET:
-            self._cache.move_to_end(store_key, last=False)
 
     __delitem__ = delete
     __getitem__ = get

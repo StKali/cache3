@@ -31,9 +31,4 @@ MIN_KEY_LENGTH: int = 1
 MAX_TIMEOUT: int = 365 * 24 * 60 * 60
 MIN_TIMEOUT: int = 0
 
-
-LRU: str = 'lru'
-FIFO: str = 'fifo'
-LFU: str = 'lfu'
-
-DEFAULT_EVICT: str = LRU
+LRU_EVICT: str = 'lru'

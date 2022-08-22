@@ -515,7 +515,7 @@ class SimpleDiskCache(AbstractCache):
     def restore_key(self, serial_key: str) -> str:
         return serial_key
 
-    def evict(self) -> NoReturn:
+    def lru(self) -> NoReturn:
         """ It is called by the master logic, and there is no need to
         care about when to schedule. """
 
