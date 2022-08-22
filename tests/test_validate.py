@@ -11,11 +11,12 @@ import pytest
 from cache3.validate import NumberValidate, StringValidate, DirectoryValidate, EnumerateValidate
 
 file: str = '.test'
+directory: str = '.hello'
 
 
 class Checker:
 
-    def __init__(self, number=1, string='hello', directory='.hello', enumerator='a'):
+    def __init__(self, number=1, string='hello', directory=directory, enumerator='a'):
         self.number = number
         self.string = string
         self.directory = directory
@@ -71,3 +72,7 @@ def test_directory():
     Checker(directory=file)
     assert os.path.exists(file)
     shutil.rmtree(file)
+
+
+def teardown_module():
+    os.removedirs(directory)

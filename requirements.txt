@@ -3,4 +3,4 @@ tox==3.25.0
 pytest==7.0.1
 pytest-cov==3.0.0
 pytest-benchmark[histogram]==3.4.1
-ujson==5.3.0
+ujson==5.4.0

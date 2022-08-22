@@ -59,7 +59,7 @@ class SimpleCache(AbstractCache):
         self._lock: LK = _locks.setdefault(self.name, self.LOCK())
 
     def set(
-            self, key: Any, value: Any, timeout: Number = DEFAULT_TIMEOUT,
+            self, key: Any, value: Any, timeout: Time = DEFAULT_TIMEOUT,
             tag: TG = DEFAULT_TAG
     ) -> bool:
         store_key: SK = self.store_key(key, tag=tag)
@@ -95,7 +95,7 @@ class SimpleCache(AbstractCache):
                 return True
             return False
 
-    def touch(self, key: str, timeout: Number, tag: TG = DEFAULT_TAG) -> bool:
+    def touch(self, key: str, timeout: Time, tag: TG = DEFAULT_TAG) -> bool:
         """ Renew the key. When the key does not exist, false will be returned """
         store_key: SK = self.store_key(key, tag=tag)
         with self._lock:

@@ -216,7 +216,7 @@ class SimpleDiskCache(AbstractCache):
         """ Return the path to the SQLite3 file. """
         return str(self.directory / self.name)
 
-    def set(self, key: str, value: Any, timeout: Number = DEFAULT_TIMEOUT,
+    def set(self, key: str, value: Any, timeout: Time = DEFAULT_TIMEOUT,
             tag: TG = DEFAULT_TAG) -> bool:
 
         store_key: str = self.store_key(key, tag)
@@ -347,7 +347,7 @@ class SimpleDiskCache(AbstractCache):
             value: Any = self.deserialize(serial_value)
             yield key, value
 
-    def touch(self, key: str, timeout: Number, tag: TG = DEFAULT_TAG) -> bool:
+    def touch(self, key: str, timeout: Time, tag: TG = DEFAULT_TAG) -> bool:
         """ Renew the key. When the key does not exist, false will be returned """
 
         store_key: str = self.store_key(key, tag)

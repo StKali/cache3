@@ -24,7 +24,7 @@ except ImportError:
     import json
 
 Number: Type = Union[int, float]
-Time: Type = Optional[float]
+Time: Type = Optional[Union[float, int]]
 TG: Type = Optional[str]
 VT: Type = int
 VH: Type = Callable[[Any, VT], NoReturn]
@@ -59,28 +59,28 @@ class AbstractCache(ABC):
 
     name: str = StringValidate(minsize=1, maxsize=MAX_KEY_LENGTH)
     evict_method: str = EnumerateValidate(LRU_EVICT, )
-    timeout: Number = NumberValidate(minvalue=MIN_TIMEOUT, maxvalue=MAX_TIMEOUT)
+    timeout: Time = NumberValidate(minvalue=MIN_TIMEOUT, maxvalue=MAX_TIMEOUT)
     max_size: int = NumberValidate(minvalue=0)
     cull_size: str = NumberValidate(minvalue=0)
 
     def __init__(
             self,
             name: str = DEFAULT_NAME,
-            timeout: Number = DEFAULT_TIMEOUT,
+            timeout: Time = DEFAULT_TIMEOUT,
             max_size: int = DEFAULT_MAX_SIZE,
             evict_method: str = LRU_EVICT,
             cull_size: int = DEFAULT_CULL_SIZE,
             **kwargs
     ) -> None:
         self.name: str = name
-        self.timeout: Number = timeout
+        self.timeout: Time = timeout
         self.max_size: int = max_size
         self.evict_method: str = evict_method
         self.cull_size: int = cull_size
         self._kwargs: Dict[str, Any] = kwargs
 
     @abstractmethod
-    def set(self, key: str, value: Any, timeout: Number = DEFAULT_TIMEOUT,
+    def set(self, key: str, value: Any, timeout: Time = DEFAULT_TIMEOUT,
             tag: TG = DEFAULT_TAG) -> bool:
         """ Set a value in the cache. Use timeout for the key if
         it's given, Otherwise use the default timeout.
@@ -118,7 +118,7 @@ class AbstractCache(ABC):
         return returns
 
     @abstractmethod
-    def touch(self, key: str, timeout: Number, tag: TG = DEFAULT_TAG) -> bool:
+    def touch(self, key: str, timeout: Time, tag: TG = DEFAULT_TAG) -> bool:
         """ Update the key's expiry time using timeout. Return True if successful
         or False if the key does not exist.
         """
