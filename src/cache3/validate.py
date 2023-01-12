@@ -97,7 +97,7 @@ class DirectoryValidate(Validator):
 
         path: Path = Path(directory).expanduser().absolute()
         if not path.exists():
-            path.mkdir()
+            path.mkdir(parents=True, exist_ok=True)
             return path
 
         return path

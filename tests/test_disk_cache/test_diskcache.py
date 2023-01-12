@@ -4,6 +4,7 @@
 # Author: clarkmonkey@163.com
 
 from typing import List, Tuple, Any
+from pathlib import Path
 
 import pytest
 
@@ -18,6 +19,18 @@ many_pair: List[Tuple[Any, ...]] = [
     ('generator', range(10), 'tag3'),    # list value
 ]
 params = pytest.mark.parametrize
+
+
+def test_create_diskcache(tmp_path):
+    paths: List[Path] = [
+        tmp_path / '1',
+        tmp_path / '2' / '22',
+        tmp_path / '__' / 'test_dir'
+    ]
+    for path in paths:
+        assert not path.exists()
+        DiskCache(path)
+        assert path.exists()
 
 
 class TestDiskCache:
