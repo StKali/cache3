@@ -93,7 +93,7 @@ class AbstractCache(ABC):
         """
 
     @abstractmethod
-    def ex_set(self, key: str, value: Any, timeout: float = DEFAULT_TIMEOUT,
+    def ex_set(self, key: str, value: Any, timeout: Time = DEFAULT_TIMEOUT,
                tag: Optional[str] = DEFAULT_TAG) -> bool:
         """ Set a value in the cache if the key does not already exist. If
         timeout is given, use that timeout for the key; otherwise use the
@@ -152,7 +152,7 @@ class AbstractCache(ABC):
         """ extract key and tag from serialize key """
 
     def get_backend_timeout(
-            self, timeout: float = DEFAULT_TIMEOUT, now: Optional[Time] = None
+            self, timeout: Time = DEFAULT_TIMEOUT, now: Optional[Time] = None
     ) -> Optional[float]:
         """ Return the timeout value usable by this backend based upon the
         provided timeout.
@@ -198,7 +198,7 @@ class AbstractCache(ABC):
     def has_key(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
         """ Return True if the key is in the cache and has not expired. """
 
-    def memoize(self, tag: Optional[str] = DEFAULT_TAG, timeout: float = DEFAULT_TIMEOUT) -> Any:
+    def memoize(self, tag: Optional[str] = DEFAULT_TAG, timeout: Time = DEFAULT_TIMEOUT) -> Any:
         """ The cache is decorated with the return value of the function,
         and the timeout is available. """
 

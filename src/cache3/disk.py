@@ -280,7 +280,7 @@ class SimpleDiskCache(AbstractCache):
         ).fetchone())
 
     def ex_set(
-            self, key: str, value: Any, timeout: float = DEFAULT_TIMEOUT,
+            self, key: str, value: Any, timeout: Time = DEFAULT_TIMEOUT,
             tag: Optional[str] = DEFAULT_TAG
     ) -> bool:
         """ Mutually exclusive sets, even across processes, can also ensure the
