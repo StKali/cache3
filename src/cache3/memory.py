@@ -79,7 +79,7 @@ class SimpleCache(AbstractCache):
         return value
 
     def ex_set(
-            self, key: str, value: Any, timeout: float = DEFAULT_TIMEOUT,
+            self, key: str, value: Any, timeout: Time = DEFAULT_TIMEOUT,
             tag: Optional[str] = DEFAULT_TAG
     ) -> bool:
         """ Realize the mutually exclusive operation of data through thread lock.
@@ -176,7 +176,7 @@ class SimpleCache(AbstractCache):
         return store_key
 
     def _has_expired(self, store_key: SK) -> bool:
-        exp: float = self._expire_info.get(store_key, -1.)
+        exp: Time = self._expire_info.get(store_key, -1.)
         return exp is not None and exp <= current()
 
     def _delete(self, store_key: SK) -> bool:
