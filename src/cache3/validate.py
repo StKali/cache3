@@ -35,6 +35,9 @@ class NumberValidate(Validator):
         self.maxvalue: Number = maxvalue
 
     def validate(self, value) -> NoReturn:
+        
+        if value is None:
+            return
 
         if not isinstance(value, (int, float)):
             raise TypeError(f'Expected {value!r} to be an int or float')
