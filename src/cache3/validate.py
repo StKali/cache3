@@ -40,15 +40,18 @@ class NumberValidate(Validator):
             return
 
         if not isinstance(value, (int, float)):
-            raise TypeError(f'Expected {value!r} to be an int or float')
+            raise TypeError(
+                'Expected %r to be an int or float' % value
+            )
 
         if self.minvalue is not None and value < self.minvalue:
             raise ValueError(
-                f'Expected {value!r} to be at least {self.minvalue!r}'
+                'Expected %r to be at least %r' % (value, self.minvalue)
             )
+
         if self.maxvalue is not None and value > self.maxvalue:
             raise ValueError(
-                f'Expected {value!r} to be no more than {self.maxvalue!r}'
+                'Expected %r to be no more than %r' % (value, self.maxvalue)
             )
 
 
@@ -66,18 +69,20 @@ class StringValidate(Validator):
     def validate(self, value: str) -> NoReturn:
 
         if not isinstance(value, str):
-            raise TypeError(f'Expected {value!r} to be an str')
+            raise TypeError(
+                'Expected %r to be an str' % value
+            )
         if self.minsize is not None and len(value) < self.minsize:
             raise ValueError(
-                f'Expected {value!r} to be no smaller than {self.minsize!r}'
+                'Expected %r to be no smaller than %r' % (value, self.minsize)
             )
         if self.maxsize is not None and len(value) > self.maxsize:
             raise ValueError(
-                f'Expected {value!r} to be no bigger than {self.maxsize!r}'
+                'Expected %r to be no bigger than %r' % (value, self.maxsize)
             )
         if self.predicate is not None and not self.predicate(value):
             raise ValueError(
-                f'Expected {self.predicate} to be true for {value!r}'
+                'Expected %r to be true for %r' % (self.predicate, value)
             )
 
 
@@ -89,14 +94,18 @@ class EnumerateValidate(Validator):
     def validate(self, value: Any) -> NoReturn:
 
         if value not in self.options:
-            raise ValueError(f'Expected {value!r} to be one of {self.options!r}')
+            raise ValueError(
+                'Expected %r to be one of %r' % (value, self.options)
+            )
 
 
 class DirectoryValidate(Validator):
 
     def validate(self, directory: Any) -> Optional[Path]:
         if not isinstance(directory, (str, Path)):
-            raise ValueError(f'Expected {directory!r} to be a like-path object')
+            raise ValueError(
+                'Expected %r to be a like-path object' % directory
+            )
 
         path: Path = Path(directory).expanduser().absolute()
         if not path.exists():

@@ -157,11 +157,11 @@ class AbstractCache(ABC):
         """ Return the timeout value usable by this backend based upon the
         provided timeout.
         """
+        if timeout is None:
+            return None
         if timeout == DEFAULT_TIMEOUT:
             timeout = self.timeout
-        if now is None:
-            now: Time = current()
-        return None if timeout is None else now + timeout
+        return (now or current()) + timeout
 
     @staticmethod
     def serialize(value: Any, *args, **kwargs) -> Any:

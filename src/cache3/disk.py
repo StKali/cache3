@@ -64,7 +64,7 @@ TABLES: Dict[str, Any] = {
             '`expire` REAL,'
             '`access` REAL NOT NULL,'
             '`access_count` INTEGER DEFAULT 0,'
-            '`tag` BLOB,'    # Don't set ``NOT NULL``
+            '`tag` BLOB,'    # accept None
             '`value` BLOB)'     # cache accept NULL, (None)
         ),
         'construct': [
@@ -111,7 +111,7 @@ class SessionDescriptor:
 
         if not isinstance(value, Connection):
             raise ValueError(
-                f'Expected {value!r} to be an sqlite3.Connection.'
+                'Expected %r to be an sqlite3.Connection.' % value
             )
         with self.lock:
             setattr(instance, self.private_name, value)
@@ -232,7 +232,7 @@ class SimpleDiskCache(AbstractCache):
                 (rowid,) = row
                 return self._update_line(rowid, serial_value, timeout, tag)
             else:
-                if self._insert_line(store_key, serial_value , timeout, tag):
+                if self._insert_line(store_key, serial_value, timeout, tag):
                     self._add_count()
                     if self._length > self.max_size:
                         self.evict()
@@ -247,7 +247,6 @@ class SimpleDiskCache(AbstractCache):
             'SELECT `ROWID`, `value`, `expire` '
             'FROM `cache` '
             'WHERE `key` = ? AND `tag` = ? ',
-            # 'AND (`expire` IS NULL OR `expire` > ?)',
             (store_key, tag)
         ).fetchone()
 
@@ -255,17 +254,16 @@ class SimpleDiskCache(AbstractCache):
             return default
 
         (rowid, serial_value, expire) = row
-
-        if expire is not None and expire < current():
+        now: Time = current()
+        if expire is not None and expire < now:
             self._sub_count()
             return default
 
-        # FIXME async
         self.sqlite(
             'UPDATE `cache` '
-            'SET `access_count` = `access_count` + 1 '
+            'SET `access_count` = `access_count` + 1, `access` = ?'
             'WHERE ROWID = ?',
-            (rowid, )
+            (now, rowid)
         )
         return self.deserialize(serial_value)
 
@@ -413,11 +411,11 @@ class SimpleDiskCache(AbstractCache):
                     (store_key, tag, current())
                 ).fetchone()
             except TypeError as exc:
-                raise ValueError("Key '%s' not found" % key) from exc
+                raise ValueError('Key %r not found' % key) from exc
 
             if not isinstance(value, (int, float)):
                 raise TypeError(
-                    "unsupported operand type(s) for +: '%s' and '%s'"
+                    'unsupported operand type(s) for +: %r and %r'
                     % (type(value), type(delta))
                 )
             sqlite(
@@ -663,7 +661,7 @@ class SimpleDiskCache(AbstractCache):
             yield key, value, tag
 
     def __repr__(self) -> str:
-        return "<%s name=%s location=%s timeout=%.2f>" % (
+        return '<%s name=%s location=%s timeout=%.2f>' % (
             self.__class__.__name__, self.name, self.location, self.timeout
         )
 
