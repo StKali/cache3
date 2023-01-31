@@ -6,17 +6,14 @@
 from collections import OrderedDict
 from threading import Lock
 from time import time as current
-from typing import Dict, Any, Type, Union, Optional, NoReturn, Tuple, Callable
+from typing import Dict, Any, Type, Union, Optional, NoReturn, Tuple
 
-from cache3 import AbstractCache
+from cache3.base import AbstractCache, Time, Number, TG
 from cache3.setting import DEFAULT_TIMEOUT, DEFAULT_TAG
 from cache3.utils import NullContext
 
 LK: Type = Union[NullContext, Lock]
-Number: Type = Union[int, float]
-TG: Type = Optional[str]
 SK: Type = Tuple[Any, TG]
-Time: Type = float
 _caches: Dict[Any, Any] = {}
 _expire_info: Dict[Any, Any] = {}
 _visit_info: Dict[Any, Any] = {}

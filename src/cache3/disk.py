@@ -295,7 +295,7 @@ class SimpleDiskCache(AbstractCache):
             ).fetchone()
             if row:
                 (rowid, expire) = row
-                if expire > current():
+                if expire and expire > current():
                     return False
                 return self._update_line(rowid, self.serialize(value), timeout, tag)
             else:
