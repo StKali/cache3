@@ -100,78 +100,6 @@ def dict_factory(cursor: Cursor, row: ROW) -> Dict[str, Any]:
         d[col[0]] = row[idx]
     return d
 
-
-# class SessionDescriptor:
-#
-#     def __set_name__(self, owner: object, name: str) -> NoReturn:
-#         self.private_name: str = '_' + name
-#         self.lock: Lock = Lock()
-#         self.context: local = local()
-#
-#     def __set__(self, instance: Any, value: Connection) -> bool:
-#
-#         if not isinstance(value, Connection):
-#             raise ValueError(
-#                 'Expected %r to be an sqlite3.Connection.' % value
-#             )
-#         with self.lock:
-#             setattr(instance, self.private_name, value)
-#         return True
-#
-#     def __get__(self, instance: 'SimpleDiskCache', owner) -> Optional[Connection]:
-#
-#         local_pid: int = getattr(self.context, 'pid', None)
-#         pid: int = getpid()
-#
-#         if local_pid != pid:
-#             self._close(instance)
-#             self.context.pid = pid
-#         session: Connection = getattr(self.context, instance.location, None)
-#         if session is None:
-#             configure: Dict[str, Any] = getattr(instance, 'configure')
-#             pragmas: Dict[str, Any] = getattr(instance, 'pragmas')
-#             session = connect(
-#                 **configure
-#             )
-#             self.config_session(session, pragmas)
-#             setattr(self.context, instance.location, session)
-#
-#         return session
-#
-#     def _close(self, instance: 'SimpleDiskCache') -> bool:
-#         with self.lock:
-#             session: Connection = getattr(self.context, instance.location, None)
-#             if session is None:
-#                 return True
-#             session.close()
-#             setattr(self.context, instance.location, None)
-#         return True
-#
-#     @staticmethod
-#     def config_session(session: Connection, pragmas: Dict[str, Any]) -> NoReturn:
-#
-#         start: Time = current()
-#         script: str = ';'.join(
-#             'PRAGMA %s = %s' % item for
-#             item in pragmas.items()
-#         )
-#
-#         while True:
-#             try:
-#                 session.executescript(script)
-#                 break
-#             except OperationalError as exc:
-#                 if str(exc) != 'database is locked':
-#                     raise
-#                 diff = current() - start
-#                 if diff > 60:
-#                     raise
-#                 sleep(0.001)
-#
-#     def __delete__(self, instance: 'SimpleDiskCache') -> bool:
-#         return self._close(instance)
-
-
 # class SimpleDiskCache(AbstractCache):
 #     """ A base class for all disk cache.
 #
@@ -217,57 +145,7 @@ def dict_factory(cursor: Cursor, row: ROW) -> Dict[str, Any]:
 #         """ Return the path to the SQLite3 file. """
 #         return str(self.directory / self.name)
 #
-#     def set(self, key: str, value: Any, timeout: Time = DEFAULT_TIMEOUT,
-#             tag: TG = DEFAULT_TAG) -> bool:
-#
-#         store_key: str = self.store_key(key, tag)
-#         serial_value: Any = self.serialize(value)
-#         with self._transact() as sqlite:
-#             row: ROW = sqlite(
-#                 'SELECT `ROWID` '
-#                 'FROM `cache` '
-#                 'WHERE `key` = ? AND `tag` = ? ',
-#                 (store_key, tag)
-#             ).fetchone()
-#             if row:
-#                 (rowid,) = row
-#                 return self._update_line(rowid, serial_value, timeout, tag)
-#             else:
-#                 if self._insert_line(store_key, serial_value, timeout, tag):
-#                     self._add_count()
-#                     if self._length > self.max_size:
-#                         self.evict()
-#                 else:
-#                     return False
-#         return True
-#
-#     def get(self, key: str, default: Any = None, tag: TG = DEFAULT_TAG) -> Any:
-#
-#         store_key: str = self.store_key(key, tag)
-#         row: ROW = self.sqlite(
-#             'SELECT `ROWID`, `value`, `expire` '
-#             'FROM `cache` '
-#             'WHERE `key` = ? AND `tag` = ? ',
-#             (store_key, tag)
-#         ).fetchone()
-#
-#         if not row:
-#             return default
-#
-#         (rowid, serial_value, expire) = row
-#         now: Time = current()
-#         if expire is not None and expire < now:
-#             self._sub_count()
-#             return default
-#
-#         self.sqlite(
-#             'UPDATE `cache` '
-#             'SET `access_count` = `access_count` + 1, `access` = ?'
-#             'WHERE ROWID = ?',
-#             (now, rowid)
-#         )
-#         return self.deserialize(serial_value)
-#
+
 #     def _has_key(self, store_key: str, tag: TG = DEFAULT_TAG) -> bool:
 #
 #         return bool(self.sqlite(
@@ -373,28 +251,6 @@ def dict_factory(cursor: Cursor, row: ROW) -> Dict[str, Any]:
 #             if success:
 #                 self._sub_count()
 #         return success
-#
-#     def inspect(self, key: str, tag: TG = DEFAULT_TAG) -> Optional[Dict[str, Any]]:
-#         """ Get the details of the key value, including any information,
-#         access times, recent access time, etc., and even the underlying
-#         serialized data
-#         """
-#
-#         store_key: str = self.store_key(key, tag)
-#         cursor: Cursor = self.sqlite(
-#             'SELECT * '
-#             'FROM `cache` '
-#             'WHERE `key` = ? AND `tag` = ?',
-#             (store_key, tag)
-#         )
-#         cursor.row_factory = dict_factory
-#         row: Optional[Dict[str, Any]] = cursor.fetchone()
-#         if row:
-#             row['store_key'] = store_key
-#             row['key'] = key
-#             row['serial_value'] = row['value']
-#             row['value'] = self.deserialize(row['value'])
-#             return row
 #
 #     def incr(self, key: str, delta: int = 1, tag: TG = DEFAULT_TAG) -> Number:
 #         """ int, float and (str/bytes) not serialize, so add in sql statement.
@@ -528,11 +384,7 @@ def dict_factory(cursor: Cursor, row: ROW) -> Dict[str, Any]:
 #                 'SELECT COUNT(1) FROM `cache`'
 #                 ') WHERE ROWID = 1'
 #             )
-#
-#     @property
-#     def sqlite(self) -> QY:
-#         return self.session.execute
-#
+
 #     @contextmanager
 #     def _transact(self, retry: bool = True) -> QY:
 #         sql: QY = self.sqlite
@@ -935,7 +787,7 @@ class PickleStore:
 def get_expire(timeout: Time, now: Time = None) -> Time:
     if timeout is None:
         return None
-    return now or current() + timeout
+    return current() + timeout
 
 
 class DiskCache:
@@ -1063,18 +915,92 @@ class DiskCache:
             (sk, now, expire, now, 0, tag, fmt, sv)
         ).rowcount == 1
 
+    def clear(self) -> bool:
+        """ Delete all data and initialize the statistics table. """
 
+        with self.sqlite.transact() as sql:
+            sql(
+                'DELETE FROM `cache`;'
+            )
+            # Delete all data and initialize the statistics table.
+            # Since the default `rowid` is used as the primary key,
+            # you don't need to care whether the `rowid` starts from
+            # 0. Even if the ID is full, SQLite will select an
+            # appropriate value from the unused rowid set.
+
+            sql(
+                'UPDATE `info` SET `count` = 0 '
+                'WHERE `rowid` = 1'
+            )
+        return True
+
+    @cached_property
+    def location(self) -> str:
+        return op.join(self.directory, self.name)
+
+    def ttl(self, key: Any, tag: TG = None) -> Time:
+        sk, _ = self.store.dumps(key)
+        row: ROW = self.sqlite.session.execute(
+            'SELECT `expire` '
+            'FROM `cache` '
+            'WHERE `key` = ? '
+            'AND `tag` IS ? '
+            'AND `expire` IS NULL OR `expire` > ?',
+            (sk, tag, current())
+        ).fetchone()
+        if not row:
+            return -1
+        (expire, ) = row
+        if expire is None:
+            return None
+        return expire - current()
+
+    def delete(self, key: str, tag: TG = None) -> bool:
+
+        sk, fmt = self.store.dumps(key)
+        with self.sqlite.transact() as sql:
+            success: bool = sql(
+                'DELETE FROM `cache` '
+                'WHERE `key` = ? AND `tag` IS ? ',
+                (sk, tag)
+            ).rowcount == 1
+            if success:
+                self._sub_count(sql)
+        return success
+
+
+    def inspect(self, key: str, tag: TG = None) -> Optional[Dict[str, Any]]:
+        """ Get the details of the key value, including any information,
+        access times, recent access time, etc., and even the underlying
+        serialized data
+        """
+
+        sk, fmt = self.store.dumps(key)
+        cursor = self.sqlite.session.execute(
+            'SELECT * '
+            'FROM `cache` '
+            'WHERE `key` = ? AND `tag` IS ?',
+            (sk, tag)
+        )
+        cursor.row_factory = dict_factory
+        row: Optional[Dict[str, Any]] = cursor.fetchone()
+        if row:
+            row['store_key'] = sk
+            row['key'] = key
+            row['sv'] = row['value']
+            row['value'] = self.store.loads(row['value'], row['format'])
+            return row
 
 
 if __name__ == '__main__':
     cache = DiskCache()
-    cache.set('name', 'monkey')
-    cache.set('hello world! xxx', '1')
-    print(cache.get('hello world! xxx'))
+    cache.clear()
+    print(cache.inspect('name'))
+    print(cache.set('name', 'monkey', timeout=10))
     print(cache.get('name'))
-    print(cache.sqlite.session.execute(
-        'SELECT * FROM `cache`'
-    ).fetchall())
+    print(cache.ttl('name'))
+    print(cache.delete('name'))
+    print(cache.inspect('name'))
 
 
 
