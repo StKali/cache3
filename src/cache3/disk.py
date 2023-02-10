@@ -4,93 +4,28 @@
 # Author: clarkmonkey@163.com
 import pickle
 import warnings
+import functools
 from contextlib import contextmanager
 from os import getpid
 from pathlib import Path
-from sqlite3.dbapi2 import Connection, Cursor, connect, OperationalError
-from threading import Lock, local, get_ident
+from sqlite3.dbapi2 import Connection, Cursor, OperationalError
+from threading import local, get_ident
 from time import time as current, sleep
-from typing import (
-    NoReturn, Type, Union, Optional, Dict, Any, List, Tuple, Iterator, Callable, AnyStr
-)
+from typing import Type, Union, Optional, Dict, Any, List, Tuple, Callable, AnyStr, Iterable
+from os import makedirs, getpid, path as op
+from hashlib import md5
+from .utils import cached_property, empty
 
-from cache3 import AbstractCache
-from cache3.base import PickleMixin, JSONMixin, Number, TG, Time
-from cache3.setting import (
-    DEFAULT_TIMEOUT, DEFAULT_TAG, DEFAULT_STORE, DEFAULT_SQLITE_TIMEOUT
-)
-from cache3.utils import cached_property
-from cache3.validate import DirectoryValidate
 
-try:
-    import ujson as json
-except ImportError:
-    import json
-
-PATH: Type = Union[Path, str]
+Time: Type = Optional[Union[float, int]]
+TG: Type = Optional[str]
 QY: Type = Callable[[Any], Cursor]
 ROW: Type = Optional[Tuple[Any]]
 
-# SQLite pragma configs
-PRAGMAS: Dict[str, Union[str, int]] = {
-    'auto_vacuum': 1,
-    'cache_size': 1 << 13,  # 8, 192 pages
-    'journal_mode': 'wal',
-    'threads': 4,  # SQLite work threads count
-    'temp_store': 2,  # DEFAULT: 0 | FILE: 1 | MEMORY: 2
-    'mmap_size': 1 << 26,  # 64MB
-    'synchronous': 1,
-}
-
-TABLES: Dict[str, Any] = {
-    'cache': {
-
-        # Do not use the autoincrement primary key, which is inefficient
-        # and easy to waste space and cpu. default behavior since the use
-        # of AUTOINCREMENT requires additional work to be done as each row
-        # is inserted and thus causes INSERTs to run a little slower.
-        # At the same time autoincrement will prevent SQLite from using
-        # primary key values that are less than the current value and are
-        # not used.
-        # docs: https://www.sqlite.org/autoinc.html
-
-        # TODO: Generally, the cache does not need a very strict expiration time,
-        #  but this precise time is very helpful for some data evict actions.
-        #  In the future, the time accuracy may be reduced to improve performance
-
-        'schema': (
-            'CREATE TABLE IF NOT EXISTS `cache`('
-            '`key` BLOB NOT NULL,'
-            '`store` REAL NOT NULL,'
-            '`expire` REAL,'
-            '`access` REAL NOT NULL,'
-            '`access_count` INTEGER DEFAULT 0,'
-            '`tag` BLOB,'    # accept None
-            '`value` BLOB)'     # cache accept NULL, (None)
-        ),
-        'construct': [
-            # unique limit <key - tag>
-            'CREATE UNIQUE INDEX IF NOT EXISTS `idx_key` '
-            'ON `cache` (`key`, `tag`)',
-
-            # avoid query primary key index tree
-            'CREATE INDEX IF NOT EXISTS `idx_data_key` '
-            'ON `cache` (`key`, `tag`, `expire`, `value`)',
-
-        ],
-    },
-
-    'info': {
-        'schema': (
-            'CREATE TABLE IF NOT EXISTS `info`( '
-            '`count` INTEGER DEFAULT 0)'
-        ),
-        'construct': [
-            'CREATE UNIQUE INDEX IF NOT EXISTS `idx_count_size` '
-            'ON `info` (`count`)',
-        ]
-    }
-}
+RAW: int = 0
+STRING: int = 1
+BYTES: int = 2
+PICKLE: int = 3
 
 
 def dict_factory(cursor: Cursor, row: ROW) -> Dict[str, Any]:
@@ -100,450 +35,6 @@ def dict_factory(cursor: Cursor, row: ROW) -> Dict[str, Any]:
         d[col[0]] = row[idx]
     return d
 
-# class SimpleDiskCache(AbstractCache):
-#     """ A base class for all disk cache.
-#
-#     Most of the methods of disk cache are implemented in this class.
-#     It uses the BaseCache primitive serialization and deserialization methods.
-#     Therefore, there are strict requirements for key and value types.
-#
-#     That means key and value can only be one of the types int, float, string,
-#     bytes and bool supported by SQLite.
-#
-#     Typically, subclasses override the serialization and deserialization methods
-#     of key and value to support more types. This is also true for some default
-#     implementations, such as ``DiskCache`` and ``JsonDiskCache``
-#     """
-#
-#     session: SessionDescriptor = SessionDescriptor()
-#     directory: DirectoryValidate = DirectoryValidate()
-#
-#     def __init__(self, directory: PATH = DEFAULT_STORE, *args, **kwargs) -> None:
-#         super(SimpleDiskCache, self).__init__(*args, **kwargs)
-#         self.directory: Path = directory
-#         self._txn_id: Optional[int] = None
-#         self.args: Tuple[Any] = args
-#         self.kwargs: Dict[str, Any] = kwargs
-#
-#         self.configure: Dict[str, Any] = {
-#             'database': self.location,
-#             'isolation_level': None,
-#             'timeout': DEFAULT_SQLITE_TIMEOUT,
-#         }
-#         self.configure.update(
-#             kwargs.get('configure', dict())
-#         )
-#         self.pragmas: Dict[str, Any] = PRAGMAS
-#         self.pragmas.update(
-#             kwargs.get('pragmas', dict())
-#         )
-#         # Initialize cache table and statistics table
-#         self._make_cache_dependencies()
-#
-#     @cached_property
-#     def location(self) -> str:
-#         """ Return the path to the SQLite3 file. """
-#         return str(self.directory / self.name)
-#
-
-#     def _has_key(self, store_key: str, tag: TG = DEFAULT_TAG) -> bool:
-#
-#         return bool(self.sqlite(
-#             'SELECT 1 FROM `cache` '
-#             'WHERE `key` = ? '
-#             'AND tag = ? '
-#             'AND (`expire` IS NULL OR `expire` > ?)',
-#             (store_key, tag, current())
-#         ).fetchone())
-#
-#     def ex_set(
-#             self, key: str, value: Any, timeout: Time = DEFAULT_TIMEOUT,
-#             tag: Optional[str] = DEFAULT_TAG
-#     ) -> bool:
-#         """ Mutually exclusive sets, even across processes, can also ensure the
-#         atomicity of operations """
-#
-#         store_key: str = self.store_key(key, tag)
-#         with self._transact() as sqlite:
-#             row: ROW = sqlite(
-#                 'SELECT `ROWID`, `expire` '
-#                 'FROM `cache` '
-#                 'WHERE `key` = ? '
-#                 'AND `tag` = ? ',
-#                 (store_key, tag)
-#             ).fetchone()
-#             if row:
-#                 (rowid, expire) = row
-#                 if expire and expire > current():
-#                     return False
-#                 return self._update_line(rowid, self.serialize(value), timeout, tag)
-#             else:
-#                 if self._insert_line(store_key, self.serialize(value), timeout, tag):
-#                     self._add_count()
-#                     if self._length > self.max_size:
-#                         self.evict()
-#                 else:
-#                     return False
-#         return True
-#
-#     def get_many(self, keys: List[str], tag: TG = DEFAULT_TAG) -> Dict[str, Any]:
-#         """ There is a limitation on obtaining a group of key values.
-#
-#         TODO WARNING: the tags of this group of key values must be consistent,
-#             but the memory based cache strategy does not have this limitation.
-#             This feature will be supported in the future to ensure the
-#             consistency of behavior
-#         """
-#
-#         store_keys: List[str] = [self.store_key(key, tag) for key in keys]
-#         snap: str = str('?, ' * len(keys)).strip(', ')
-#         statement: str = (
-#                          'SELECT `value` '
-#                          'FROM `cache` '
-#                          'WHERE `key` IN (%s) AND `tag` = ?'
-#                      ) % snap
-#         cursor: Cursor = self.sqlite(
-#             statement,
-#             (*store_keys, tag)
-#         )
-#         values: List[Any] = [self.deserialize(i[0]) for i in cursor]
-#         return dict(zip(keys, values))
-#
-#     def iter(self, tag: TG) -> Iterator[Tuple[str, Any]]:
-#
-#         query_time: Time = current()
-#         for line in self.sqlite(
-#             'SELECT `key`, `value` '
-#             'FROM `cache` '
-#             'WHERE `tag` = ? AND (`expire` IS NULL OR `expire` > ?) '
-#             'ORDER BY `store`',
-#             (tag, query_time,)
-#         ):
-#             store_key, serial_value = line
-#             key: str = self.restore_key(store_key)
-#             value: Any = self.deserialize(serial_value)
-#             yield key, value
-#
-#     def touch(self, key: str, timeout: Time, tag: TG = DEFAULT_TAG) -> bool:
-#         """ Renew the key. When the key does not exist, false will be returned """
-#
-#         store_key: str = self.store_key(key, tag)
-#         now: Time = current()
-#         new_expire: Optional[Number] = self.get_backend_timeout(timeout, now)
-#         with self._transact() as sqlite:
-#             return sqlite(
-#                 'UPDATE `cache` SET `expire` = ? '
-#                 'WHERE `key` = ? '
-#                 'AND `tag` = ? '
-#                 'AND (`expire` IS NULL OR `expire` > ?)',
-#                 (new_expire, store_key, tag, now)
-#             ).rowcount == 1
-#
-#     def delete(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
-#
-#         store_key: str = self.store_key(key, tag)
-#         with self._transact() as sqlite:
-#             success: bool = sqlite(
-#                 'DELETE FROM `cache` '
-#                 'WHERE `key` = ? AND `tag` = ?',
-#                 (store_key, tag)
-#             ).rowcount == 1
-#             if success:
-#                 self._sub_count()
-#         return success
-#
-#     def incr(self, key: str, delta: int = 1, tag: TG = DEFAULT_TAG) -> Number:
-#         """ int, float and (str/bytes) not serialize, so add in sql statement.
-#
-#         The increment operation should be implemented through SQLite,
-#         which is not safe at the Python language level
-#         """
-#         store_key: str = self.store_key(key, tag)
-#         with self._transact() as sqlite:
-#             try:
-#                 (value,) = sqlite(
-#                     'SELECT `value` FROM `cache` '
-#                     'WHERE `key` = ? AND `tag` = ? '
-#                     'AND (`expire` IS NULL OR `expire` > ?)',
-#                     (store_key, tag, current())
-#                 ).fetchone()
-#             except TypeError as exc:
-#                 raise ValueError('Key %r not found' % key) from exc
-#
-#             if not isinstance(value, (int, float)):
-#                 raise TypeError(
-#                     'unsupported operand type(s) for +: %r and %r'
-#                     % (type(value), type(delta))
-#                 )
-#             sqlite(
-#                 'UPDATE `cache` SET `value`= `value` + %s '
-#                 'WHERE `key` = ? '
-#                 'AND `tag` = ? '
-#                 'AND (`expire` IS NULL OR `expire` > ?)' % delta,
-#                 (store_key, tag, current())
-#             )
-#         return value + delta
-#
-#     def has_key(self, key: str, tag: TG = DEFAULT_TAG) -> bool:
-#         store_key: str = self.store_key(key, tag)
-#         return self._has_key(store_key, tag)
-#
-#     def ttl(self, key: Any, tag: TG = DEFAULT_TAG) -> Time:
-#
-#         store_key: str = self.store_key(key, tag)
-#         row: ROW = self.sqlite(
-#             'SELECT `expire` '
-#             'FROM `cache` '
-#             'WHERE `key` = ? '
-#             'AND `tag` = ? '
-#             'AND `expire` > ?',
-#             (store_key, tag, current())
-#         ).fetchone()
-#         if not row:
-#             return -1
-#         (expire, ) = row
-#         return expire - current()
-#
-#     def clear(self) -> bool:
-#         """ Delete all data and initialize the statistics table. """
-#
-#         with self._transact() as sql:
-#             sql(
-#                 'DELETE FROM `cache`;'
-#             )
-#             # Delete all data and initialize the statistics table.
-#             # Since the default `ROWID` is used as the primary key,
-#             # you don't need to care whether the `ROWID` starts from
-#             # 0. Even if the ID is full, SQLite will select an
-#             # appropriate value from the unused rowid set.
-#
-#             sql(
-#                 'UPDATE `info` SET `count` = 0 '
-#                 'WHERE ROWID = 1'
-#             )
-#         return True
-#
-#     @property
-#     def _length(self) -> int:
-#         """ This method is only for capacity constraints, and it doesn't really
-#         represent a valid number of items.
-#
-#         Because the exact method of calculating the number of valid values is
-#         very expensive, performing it on a per-set basis will greatly reduce
-#         cache performance. So this is an approximate value for the purpose of
-#         estimating cache size.
-#
-#         This feature is related to the implementation of cache eviction.
-#
-#         The count is increased each time the data is displayed, and the count is
-#         decreased when the data is deleted by `delete` method or `del` keyword.
-#         When a certain threshold is reached, the cache elimination is triggered.
-#         At this time, the expired data is uniformly deleted.
-#
-#         The basis for this is as follows:
-#             1 Caches usually read and write frequently.
-#             2 Expired caches take up space, but not by much.
-#             3 Deferred cache deletion will give a huge performance boost.
-#
-#         """
-#         (count,) = self.sqlite(
-#             'SELECT `count` FROM `info` '
-#             'WHERE `ROWID` = 1'
-#         ).fetchone()
-#         return count
-#
-#     def get_real_count(self) -> int:
-#         self.flush_size()
-#         return self._length
-#
-#     def flush_size(self) -> NoReturn:
-#         self.sqlite(
-#             'UPDATE `info` SET `count` = ('
-#             'SELECT COUNT(1) FROM `cache` '
-#             'WHERE `expire` > ? '
-#             ') WHERE ROWID = 1', (current(),)
-#         )
-#
-#     def store_key(self, key: Any, tag: Optional[str]) -> str:
-#         return key
-#
-#     def restore_key(self, serial_key: str) -> str:
-#         return serial_key
-#
-#     def lru(self) -> NoReturn:
-#         """ It is called by the master logic, and there is no need to
-#         care about when to schedule. """
-#
-#         if self.cull_size == 0:
-#             self.clear()
-#
-#         # reduce k-v pair to follow count limit
-#         with self._transact() as sqlite:
-#             sqlite(
-#                 'UPDATE `info` SET `count` = ('
-#                 'SELECT COUNT(1) FROM `cache`'
-#                 ') WHERE ROWID = 1'
-#             )
-
-#     @contextmanager
-#     def _transact(self, retry: bool = True) -> QY:
-#         sql: QY = self.sqlite
-#         tid: int = get_ident()
-#         txn_id: int = self._txn_id
-#
-#         if tid == txn_id:
-#             begin: bool = False
-#         else:
-#             while True:
-#                 try:
-#                     sql('BEGIN IMMEDIATE')
-#                     begin = True
-#                     self._txn_id = tid
-#                     break
-#                 except OperationalError as exc:
-#                     if retry:
-#                         continue
-#                     raise TimeoutError(
-#                         'Transact timeout. (timeout=%s).' %
-#                         self.configure['timeout']
-#                     ) from exc
-#
-#         try:
-#             yield sql
-#         except BaseException:
-#             if begin:
-#                 assert self._txn_id == tid
-#                 self._txn_id = None
-#                 sql('ROLLBACK')
-#             raise
-#         else:
-#             if begin:
-#                 assert self._txn_id == tid
-#                 self._txn_id = None
-#                 sql('COMMIT')
-#
-#     def _make_cache_dependencies(
-#             self, tables: Optional[Dict[str, Any]] = None
-#     ) -> NoReturn:
-#         """ create tables such as ``cache``, ``info``, create index and
-#         initialization statistics.
-#         """
-#
-#         # collection table schema and construct
-#         queries: List[str] = list()
-#         tables: Dict[str, Any] = tables if tables is not None else TABLES
-#         for name, info in tables.items():
-#             schema = info['schema']
-#             if schema:
-#                 queries.append(schema)
-#
-#             index: str = info['construct']
-#             if index:
-#                 queries.extend(index)
-#
-#         # Create tables.
-#         self.session.executescript(';'.join(queries))
-#
-#         # init data table
-#         if not self.sqlite(
-#             'SELECT 1 FROM `info` WHERE `ROWID` = 1'
-#         ).fetchone():
-#             self.sqlite(
-#                 'INSERT INTO `info`(`count`) VALUES (0)'
-#             )
-#
-#     def _sub_count(self) -> bool:
-#
-#         with self._transact() as sqlite:
-#             return sqlite(
-#                 'UPDATE `info` SET `count` = `count` - 1 '
-#                 'WHERE `ROWID` = 1'
-#             ).rowcount == 1
-#
-#     def _add_count(self) -> bool:
-#         return self.sqlite(
-#                 'UPDATE `info` SET `count` = `count` + 1 '
-#                 'WHERE `ROWID` = 1'
-#             ).rowcount == 1
-#
-#     def _insert_line(self, store_key: Any, serial_value: Any, timeout: Time, tag: str) -> bool:
-#         now: Time = current()
-#         expire: Time = self.get_backend_timeout(timeout, now)
-#         return self.sqlite(
-#             'INSERT INTO `cache`('
-#             '`key`, `store`, `expire`, `access`, '
-#             '`access_count`, `tag`, `value`'
-#             ') VALUES (?, ?, ?, ?, ?, ?, ?)',
-#             (store_key, now, expire, now, 0, tag, serial_value)
-#         ).rowcount == 1
-#
-#     def _update_line(self, rowid: int, serial_value: Any, timeout: Time, tag: str) -> bool:
-#         now: Time = current()
-#         expire: Time = self.get_backend_timeout(timeout, now)
-#         return self.sqlite(
-#             'UPDATE `cache` SET '
-#             '`store` = ?, '
-#             '`expire` = ?, '
-#             '`access` = ?,'
-#             '`access_count` = ?, '
-#             '`tag` = ?, '
-#             '`value` = ? '
-#             ' WHERE `rowid` = ?',
-#             (now, expire, now, 0, tag, serial_value, rowid)
-#         ).rowcount == 1
-#
-#     def __iter__(self) -> Iterator[Tuple[str, Any, str]]:
-#         """ Will take up a lot of memory, which needs special
-#         attention when there are a lot of data.
-#
-#         Conservatively, this method is not recommended to be called
-#         It is only applicable to those scenarios with small data scale
-#         or for testing.
-#         """
-#         query_time: Time = current()
-#         for line in self.sqlite(
-#             'SELECT `key`, `value`, `tag` '
-#             'FROM `cache` '
-#             'WHERE (`expire` IS NULL OR `expire` > ?) '
-#             'ORDER BY `store`',
-#             (query_time,)
-#         ):
-#             store_key, serial_value, tag = line
-#             key: str = self.restore_key(store_key)
-#             value: Any = self.deserialize(serial_value)
-#             yield key, value, tag
-#
-#     def __repr__(self) -> str:
-#         return '<%s name=%s location=%s timeout=%.2f>' % (
-#             self.__class__.__name__, self.name, self.location, self.timeout
-#         )
-#
-#     def __len__(self) -> int:
-#         return self.get_real_count()
-#
-#     __delitem__ = delete
-#     __getitem__ = get
-#     __setitem__ = set
-
-
-# class DiskCache(PickleMixin, SimpleDiskCache):
-#     """ Use `Pickle` as the underlying serialization protocol.
-#     Supports most objects in Python as value.
-#     """
-
-
-# class JsonDiskCache(JSONMixin, SimpleDiskCache):
-#     """ Use `Json` as the underlying serialization protocol.
-#     Making some unhashable objects as value.
-#     """
-
-from os import makedirs, getpid, path as op
-from hashlib import md5
-
-RAW: int = 0
-STRING: int = 1
-BYTES: int = 2
-PICKLE: int = 3
 
 # SQLite pragma configs
 default_pragmas: Dict[str, Union[str, int]] = {
@@ -593,16 +84,18 @@ class SQLiteEntry:
             return
 
         init_cache_statements: List[str] = [
+            
             # cache table
             'CREATE TABLE IF NOT EXISTS `cache`('
-            '`key` BLOB NOT NULL,'
+            '`key` BLOB NOT NULL, '
+            '`kf` INTERGER NOT NULL, '
+            '`value` BLOB, '  # cache accept NULL, (None)
+            '`vf` INTEGER NOT NULL, ' 
+            '`tag` BLOB, '  # accept None
             '`store` REAL NOT NULL,'
             '`expire` REAL,'
             '`access` REAL NOT NULL,'
-            '`access_count` INTEGER DEFAULT 0,'
-            '`tag` BLOB, '  # accept None
-            '`format` INTEGER NOT NULL, '
-            '`value` BLOB)',  # cache accept NULL, (None)
+            '`access_count` INTEGER DEFAULT 0)',
 
             # create index
             'CREATE UNIQUE INDEX IF NOT EXISTS `idx_key` '
@@ -613,7 +106,7 @@ class SQLiteEntry:
             '`count` INTEGER DEFAULT 0)',
 
             # set count = 0
-            'INSERT INTO `info`(`count`) VALUES (0)'
+            'INSERT INTO `info`(`count`) VALUES (0)',
         ]
 
         init_script: str = ';'.join(init_cache_statements)
@@ -787,7 +280,7 @@ class PickleStore:
 def get_expire(timeout: Time, now: Time = None) -> Time:
     if timeout is None:
         return None
-    return current() + timeout
+    return (now or current()) + timeout
 
 
 class DiskCache:
@@ -804,7 +297,7 @@ class DiskCache:
             makedirs(self.directory, exist_ok=True)
         self.name: str = name
         self.max_size: int = max_size
-
+        self.iter_size: int = 1 << 7
         # sqlite
         self.sqlite: SQLiteEntry = SQLiteEntry(
             path=self.directory, name=name, **kwargs.pop('sqlite_config', {})
@@ -819,7 +312,7 @@ class DiskCache:
 
     def set(self, key: Any, value: Any, timeout: Time = None, tag: TG = None) -> bool:
 
-        sk, _ = self.store.dumps(key)
+        sk, kf = self.store.dumps(key)
         with self.sqlite.transact() as sql:
             row = sql(
                 'SELECT `rowid`'
@@ -827,26 +320,27 @@ class DiskCache:
                 'WHERE `key` = ? AND `tag` IS ?',
                 (sk, tag)
             ).fetchone()
-            sv, fmt = self.store.dumps(value)
+            sv, vf = self.store.dumps(value)
 
             # key existed but it is expired
             if row:
                 (rowid, ) = row
-                if self._update_row(sql, rowid, sv, fmt, timeout, tag):
-                    """"""
+                if self._update_row(sql, rowid, sv, vf, timeout, tag):
+                    return True
             # key not found in cache
             else:
-                if self._create_row(sql, sk, sv, fmt, timeout, tag):
+                if self._create_row(sql, sk, kf, sv, vf, timeout, tag):
                     self._add_count(sql)
+                    # FIXME evict
                 else:
                     return False
         return True
 
     def get(self, key: Any, default: Any = None, tag: TG = None) -> Any:
-        sk, fmt = self.store.dumps(key)
+        sk, _ = self.store.dumps(key)
         sql = self.sqlite.session.execute
         row = sql(
-            'SELECT `rowid`, `value`, `expire`, `format` '
+            'SELECT `rowid`, `value`, `expire`, `vf` '
             'FROM `cache` '
             'WHERE `key` = ? AND `tag` IS ?',
             (sk, tag)
@@ -856,7 +350,7 @@ class DiskCache:
             # not found key in cache
             return default
 
-        (rowid, sv, expire, fmt) = row
+        (rowid, sv, expire, vf) = row
         now: Time = current()
         if expire is not None and expire < now:
             self._sub_count(sql)
@@ -869,7 +363,7 @@ class DiskCache:
             'WHERE `rowid` = ?',
             (now, rowid)
         )
-        return self.store.loads(sv, fmt)
+        return self.store.loads(sv, vf)
 
     @staticmethod
     def _sub_count(sql: QY) -> bool:
@@ -886,33 +380,32 @@ class DiskCache:
         ).rowcount == 1
 
     @staticmethod
-    def _update_row(sql: QY, rowid: int, sv: Any, fmt: int, timeout: Time, tag: TG) -> bool:
+    def _update_row(sql: QY, rowid: int, sv: Any, vf: int, timeout: Time, tag: TG) -> bool:
         now: Time = current()
         expire: Time = get_expire(timeout, now)
         return sql(
             'UPDATE `cache` SET '
+            '`value` = ?, '
+            '`vf` = ?, '
+            '`tag` = ?, '
             '`store` = ?, '
             '`expire` = ?, '
             '`access` = ?, '
-            '`access_count` = ?, '
-            '`tag` = ?, '
-            '`format` = ?, '
-            '`value` = ? '
+            '`access_count` = ? '
             'WHERE `rowid` = ?',
-            (now, expire, now, 0, tag, fmt, sv, rowid)
+            (sv, vf, tag, now, expire, now, 0, rowid)
         ).rowcount == 1
 
     @staticmethod
-    def _create_row(sql: QY, sk: Any, sv: Any, fmt: int, timeout: Time, tag: TG) -> bool:
+    def _create_row(sql: QY, sk: Any, kf: int, sv: Any, vf: int, timeout: Time, tag: TG) -> bool:
 
         now: Time = current()
         expire: Time = get_expire(timeout, now)
         return sql(
             'INSERT INTO `cache`('
-            '`key`, `store`, `expire`, `access`, '
-            '`access_count`, `tag`, `format`, `value`'
-            ') VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            (sk, now, expire, now, 0, tag, fmt, sv)
+            '`key`, `kf`, `value`, `vf`, `tag`, `store`, `expire`, `access`, `access_count`'
+            ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            (sk, kf, sv, vf, tag, now, expire, now, 0)
         ).rowcount == 1
 
     def clear(self) -> bool:
@@ -936,7 +429,7 @@ class DiskCache:
 
     @cached_property
     def location(self) -> str:
-        return op.join(self.directory, self.name)
+        return (Path(self.directory) / self.name).as_posix()
 
     def ttl(self, key: Any, tag: TG = None) -> Time:
         sk, _ = self.store.dumps(key)
@@ -957,7 +450,7 @@ class DiskCache:
 
     def delete(self, key: str, tag: TG = None) -> bool:
 
-        sk, fmt = self.store.dumps(key)
+        sk, _ = self.store.dumps(key)
         with self.sqlite.transact() as sql:
             success: bool = sql(
                 'DELETE FROM `cache` '
@@ -975,7 +468,7 @@ class DiskCache:
         serialized data
         """
 
-        sk, fmt = self.store.dumps(key)
+        sk, _ = self.store.dumps(key)
         cursor = self.sqlite.session.execute(
             'SELECT * '
             'FROM `cache` '
@@ -985,23 +478,150 @@ class DiskCache:
         cursor.row_factory = dict_factory
         row: Optional[Dict[str, Any]] = cursor.fetchone()
         if row:
-            row['store_key'] = sk
-            row['key'] = key
+            row['sk'] = row['key']
+            row['key'] = self.store.loads(row['key'], row['kf'])
             row['sv'] = row['value']
-            row['value'] = self.store.loads(row['value'], row['format'])
+            row['value'] = self.store.loads(row['value'], row['vf'])
             return row
 
+    @property
+    def length(self) -> int:
+        stamp = getattr(self, '_length', 0)
+        now = current()
+        if stamp + 2 < now:
+            self.sqlite.session.execute(
+                'UPDATE `info` SET `count` = ('
+                'SELECT COUNT(1) FROM `cache` '
+                'WHERE `expire` IS NULL OR `expire` > ? '
+                ') WHERE `rowid` = 1', (now, )
+            )
+            setattr(self, '_length', now)
+        return len(self)
+    
+    def has_key(self, key: Any, tag: TG = None) -> bool:
+        sk, kf = self.store.dumps(key)
+        return bool(self.sqlite.session.execute(
+            'SELECT 1 FROM `cache` '
+            'WHERE `key` = ? '
+            'AND `tag` IS ? '
+            'AND (`expire` IS NULL OR `expire` > ?)',
+            (sk, tag, current())
+        ).fetchone())
 
-if __name__ == '__main__':
-    cache = DiskCache()
-    cache.clear()
-    print(cache.inspect('name'))
-    print(cache.set('name', 'monkey', timeout=10))
-    print(cache.get('name'))
-    print(cache.ttl('name'))
-    print(cache.delete('name'))
-    print(cache.inspect('name'))
+    def touch(self, key: str, timeout: Time = None, tag: TG = None) -> bool:
+        """ Renew the key. When the key does not exist, false will be returned """
+        now: Time = current()
+        new_expire: Time = get_expire(timeout, now)
+        sk, _ = self.store.dumps(key)
+        with self.sqlite.transact() as sql:
+            return sql(
+                'UPDATE `cache` SET `expire` = ? '
+                'WHERE `key` = ? '
+                'AND `tag` IS ? '
+                'AND (`expire` IS NULL OR `expire` > ?)',
+                (new_expire, sk, tag, now)
+            ).rowcount == 1
 
+    def memoize(self, tag: TG = None, timeout: Time = 24 * 60 * 60) -> Any:
+        """ The cache is decorated with the return value of the function,
+        and the timeout is available. """
 
+        if callable(tag):
+            raise TypeError(
+                "Mame cannot be callable. ('@cache.memoize()' not '@cache.memoize')."
+            )
 
+        def decorator(func) -> Callable[[Callable[[Any], Any]], Any]:
+            """ Decorator created by memoize() for callable `func`."""
 
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs) -> Any:
+                """Wrapper for callable to cache arguments and return values."""
+                value: Any = self.get(func.__name__, empty, tag)
+                if value is empty:
+                    value: Any = func(*args, **kwargs)
+                    self.set(func.__name__, value, timeout, tag)
+                return value
+            return wrapper
+
+        return decorator
+
+    def ex_set(self, key: Any, value: Any, timeout: Time = None, tag: TG = None) -> bool:
+
+        sk, kf = self.store.dumps(key)
+        with self.sqlite.transact() as sql:
+            row = sql(
+                'SELECT `rowid`, `expire` '
+                'FROM `cache` '
+                'WHERE `key` = ? '
+                'AND `tag` IS ?',
+                (sk, tag)
+            ).fetchone()
+
+            if row:
+                (rowid, expire) = row
+                if expire and expire > current():
+                    return False
+                sv, vf = self.store.dumps(value)
+                return self._update_row(sql, rowid, sv, vf, timeout, tag)
+            else:
+                sv, vf = self.store.dumps(value)
+                if self._create_row(sql, sk, kf, sv, vf, timeout, tag):
+                    self._add_count(sql)
+                else:
+                    return False
+        return True
+
+    def iter(self, tag: TG = None) -> Iterable[Tuple[Any, Any]]:
+
+        count, index = self.iter_size, 0
+        now: Time = current()
+        sql = self.sqlite.session.execute
+        while count >= self.iter_size:
+            count: int = 0
+            for line in sql(
+                'SELECT `key`, `value` '
+                'FROM `cache` '
+                'WHERE `tag` IS ? '
+                'AND (`expire` IS NULL OR `expire` > ?) '
+                'ORDER BY `store` '
+                'LIMIT ? OFFSET ?',
+                (tag, now, self.iter_size, index * self.iter_size)
+            ):
+                count += 1
+                yield line
+            index += 1
+
+    def __iter__(self) -> Iterable[Tuple[Any, Any, str]]:
+        """ Will take up a lot of memory, which needs special
+        attention when there are a lot of data.
+        Conservatively, this method is not recommended to be called
+        It is only applicable to those scenarios with small data scale
+        or for testing.
+        """
+        now: Time = current()
+        n: int = self.length // self.iter_size + 1
+        sql: QY = self.sqlite.session.execute
+        for i in range(n):
+            for line in sql(
+                'SELECT `key`, `kf`, `value`, `vf`, `tag` '
+                'FROM `cache` '
+                'WHERE (`expire` IS NULL OR `expire` > ?) '
+                'ORDER BY `store`'
+                'LIMIT ? OFFSET ?',
+                (now, self.iter_size, self.iter_size * i)
+            ):
+                if line:
+                    sk, kf, sv, vf, tag = line
+                    yield self.store.loads(sk, kf), self.store.loads(sv, vf), tag
+
+    def __len__(self) -> int:
+        (length, ) = self.sqlite.session.execute(
+            'SELECT `count` '
+            'FROM `info` '
+            'WHERE `rowid` = ?', (1, )
+        ).fetchone()
+        return length
+
+    def __repr__(self) -> str:
+        return f'<{type(self).__name__}: {self.location}>'
