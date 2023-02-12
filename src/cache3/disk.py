@@ -2,11 +2,12 @@
 # -*- coding: utf-8 -*-
 # DATE: 2021/9/15
 # Author: clarkmonkey@163.com
+
 import pickle
 import warnings
 import functools
+import sys
 from contextlib import contextmanager
-from os import getpid
 from pathlib import Path
 from sqlite3.dbapi2 import Connection, Cursor, OperationalError
 from threading import local, get_ident
@@ -14,30 +15,31 @@ from time import time as current, sleep
 from typing import Type, Union, Optional, Dict, Any, List, Tuple, Callable, AnyStr, Iterable
 from os import makedirs, getpid, path as op
 from hashlib import md5
-from .utils import cached_property, empty
-
+from utils import cached_property, empty
 
 Time: Type = Optional[Union[float, int]]
 TG: Type = Optional[str]
 QY: Type = Callable[[Any], Cursor]
-ROW: Type = Optional[Tuple[Any]]
+ROW: Type = Optional[Tuple[Any,...]]
 
 RAW: int = 0
-STRING: int = 1
-BYTES: int = 2
-PICKLE: int = 3
+NUMBER: int = 1
+STRING: int = 2
+BYTES: int = 3
+PICKLE: int = 4
 
 
-def dict_factory(cursor: Cursor, row: ROW) -> Dict[str, Any]:
-    """ Format query result to dict. """
-    d: dict = dict()
-    for idx, col in enumerate(cursor.description):
-        d[col[0]] = row[idx]
-    return d
+class Cache3Error(Exception):
+    """"""
 
+
+if sys.version_info > (3, 10):
+    from types import NoneType
+else:
+    NoneType: Type = type(None)
 
 # SQLite pragma configs
-default_pragmas: Dict[str, Union[str, int]] = {
+default_pragmas: Dict[str, Any] = {
     'auto_vacuum': 1,
     'cache_size': 1 << 13,  # 8, 192 pages
     'journal_mode': 'wal',
@@ -46,24 +48,34 @@ default_pragmas: Dict[str, Union[str, int]] = {
     'mmap_size': 1 << 26,  # 64MB
     'synchronous': 1,
 }
+default_charset: str = 'UTF-8'
 
 
 class SQLiteEntry:
+    """ 和 SQLite3 数据库交互的接口，完成链接的打开和释放 """
 
     def __init__(
             self,
             path: str,
             name: str,
             isolation: Optional[str] = None,
-            protocol: int = pickle.HIGHEST_PROTOCOL,
             timeout: int = 5,
+            pragmas: Optional[Dict[str, Any]] = None,
             **kwargs,
     ) -> None:
+        """
+
+        Args:
+            path: sqlite 文件所在的目录
+            name: sqlite 文件名
+            isolation: 事务级别
+            timeout: sqlite 链接的超时时间
+            pragmas: sqlite3 链接的选项
+            **kwargs: connection 参数
+        """
         self.path: str = path
         self.name: str = name
-        self.protocol: int = protocol
         self.timeout: int = timeout
-
         self.__context: local = local()
         self.__txn: Optional[int] = None
         self.__connect_configure: Dict[str, Any] = {
@@ -71,14 +83,13 @@ class SQLiteEntry:
             'isolation_level': isolation,
             'timeout': timeout
         }
-
-        pragmas: dict = default_pragmas.copy()
-        pragmas.update(
-            kwargs.pop('pragmas', {})
-        )
+        if not isinstance(pragmas, (dict, NoneType)):
+            raise TypeError(
+                f'pragmas want dict object but get {type(pragmas)}'
+            )
         self.__pragmas_sql: str = ';'.join(
             'PRAGMA %s=%s' % item for
-            item in pragmas.items()
+            item in (pragmas or default_pragmas).items()
         )
         if self.created:
             return
@@ -204,7 +215,7 @@ class PickleStore:
             directory: str,
             protocol: int,
             raw_max_size: int,
-            charset: str = 'UTF-8',
+            charset: str = default_charset,
     ) -> None:
         self.directory: str = directory
         self.protocol: int = protocol
@@ -230,7 +241,7 @@ class PickleStore:
 
         # inf / float
         if tp in (int, float):
-            return data, RAW
+            return data, NUMBER
 
         # bytes
         if tp is bytes:
@@ -247,7 +258,7 @@ class PickleStore:
         return sig, PICKLE
 
     def loads(self, dump: Any, fmt: int) -> Any:
-        if fmt == RAW:
+        if fmt in (RAW, NUMBER):
             return dump
         if fmt == PICKLE:
             if isinstance(dump, str):
@@ -282,7 +293,7 @@ def get_expire(timeout: Time, now: Time = None) -> Time:
         return None
     return (now or current()) + timeout
 
-
+from diskcache import Cache
 class DiskCache:
 
     def __init__(
@@ -290,6 +301,8 @@ class DiskCache:
             directory: str = '~/.cache3',
             name: str = 'cache.sqlite3',
             max_size: int = 1 << 30,
+            evict_policy: str = 'lru',
+            evict_size: int = 1 << 7,
             **kwargs,
     ) -> None:
         self.directory: str = op.expandvars(op.expanduser(directory))
@@ -297,6 +310,7 @@ class DiskCache:
             makedirs(self.directory, exist_ok=True)
         self.name: str = name
         self.max_size: int = max_size
+        self.evict_size: int = evict_size
         self.iter_size: int = 1 << 7
         # sqlite
         self.sqlite: SQLiteEntry = SQLiteEntry(
@@ -309,6 +323,53 @@ class DiskCache:
             raw_max_size=10,
             **kwargs.pop('store_config', {})
         )
+
+        evict_policies: Dict[str, Callable] = {
+            'lru': self.lru_policy,
+            'fifo': self.fifo_policy,
+            'lfu': self.lfu_policy,
+        }
+        self.evict_policy = evict_policies.get(
+            evict_policy.lower(), empty
+        )
+        if self.evict_policy is empty:
+            raise Cache3Error(
+                f'unsupported evict policy {evict_policy!r}'
+            )
+
+    def lfu_policy(self, sql: QY) -> int:
+        return sql(
+            'DELETE FROM `cache` '
+            'WHERE `rowid` IN ('
+            '   SELECT `rowid` '
+            '   FROM `cache` '
+            '   ORDER BY `access_count` LIMIT ?'
+            ')',
+            (self.evict_size,)
+        ).rowcount
+
+    def lru_policy(self, sql: QY) -> int:
+
+        return sql(
+            'DELETE FROM `cache` '
+            'WHERE `rowid` IN ('
+            '   SELECT `rowid` '
+            '   FROM `cache` '
+            '   ORDER BY `access` LIMIT ?'
+            ')',
+            (self.evict_size,)
+        ).rowcount
+
+    def fifo_policy(self, sql: QY) -> int:
+        return sql(
+            'DELETE FROM `cache` '
+            'WHERE `rowid` IN ('
+            '   SELECT `rowid` '
+            '   FROM `cache` '
+            '   ORDER BY `store` LIMIT ?'
+            ')',
+            (self.evict_size,)
+        ).rowcount
 
     def set(self, key: Any, value: Any, timeout: Time = None, tag: TG = None) -> bool:
 
@@ -331,7 +392,7 @@ class DiskCache:
             else:
                 if self._create_row(sql, sk, kf, sv, vf, timeout, tag):
                     self._add_count(sql)
-                    # FIXME evict
+                    self.evict(sql)
                 else:
                     return False
         return True
@@ -364,6 +425,76 @@ class DiskCache:
             (now, rowid)
         )
         return self.store.loads(sv, vf)
+
+    def get_many(self, keys: List[Any], tag: TG = None) -> Dict[Any, Any]:
+        """ There is a limitation on obtaining a group of key values.
+
+        TODO WARNING: the tags of this group of key values must be consistent,
+            but the memory based cache strategy does not have this limitation.
+            This feature will be supported in the future to ensure the
+            consistency of behavior
+        """
+
+        sks: List[Any] = [self.store.dumps(key)[0] for key in keys]
+        snap: str = str('?, ' * len(sks)).strip(', ')
+        rs: Cursor = self.sqlite.session.execute(
+            'SELECT `key`, `value`, `vf` FROM `cache`'
+            'WHERE `key` IN (%s) AND `tag` IS ? ' % snap,
+            (*sks, tag)
+        )
+
+        vs: dict = {sk: self.store.loads(sv, vf) for sk, sv, vf in rs}
+        result: dict = dict()
+        for idx, key in enumerate(keys):
+            v = vs.get(sks[idx], empty)
+            if v is not empty:
+                result[key] = v
+        return result
+
+    def incr(self, key: Any, delta: Union[int, float] = 1, tag: TG = None) -> Union[int, float]:
+        """ int, float and (str/bytes) not serialize, so add in sql statement.
+
+        The increment operation should be implemented through SQLite,
+        which is not safe at the Python language level
+
+        Returns:
+            increment result value else raise 'Cache3Error' error.
+        """
+
+        sk, kf = self.store.dumps(key)
+        with self.sqlite.transact() as sql:
+            row: ROW = sql(
+                'SELECT `value`, `vf` FROM `cache` '
+                'WHERE `key` = ? AND `tag` IS ? '
+                'AND (`expire` IS NULL OR `expire` > ?)',
+                (sk, tag, current())
+            ).fetchone()
+            if not row:
+                raise KeyError(f'key {key!r} not found')
+
+            sv, vf = row
+            value = self.store.loads(sv, vf)
+            if vf != NUMBER:
+                raise TypeError(
+                    f'unsupported operand type(s) for +: {type(value)!r} and {type(delta)!r}'
+                )
+            for i in range(3):
+                rowcount: int = sql(
+                    'UPDATE `cache` SET `value`= `value` + ? '
+                    'WHERE `key` = ? '
+                    'AND `tag` IS ?',
+                    (delta, sk, tag)
+                ).rowcount
+                if rowcount == 1:
+                    break
+            else:
+                raise Cache3Error(
+                    f'The increment operation to the {key!r} failed'
+                )
+        return value + delta
+
+    def decr(self, key: Any, delta: Union[int, float]) -> Union[int, float]:
+        return self.incr(key, -delta)
 
     @staticmethod
     def _sub_count(sql: QY) -> bool:
@@ -461,7 +592,6 @@ class DiskCache:
                 self._sub_count(sql)
         return success
 
-
     def inspect(self, key: str, tag: TG = None) -> Optional[Dict[str, Any]]:
         """ Get the details of the key value, including any information,
         access times, recent access time, etc., and even the underlying
@@ -475,7 +605,7 @@ class DiskCache:
             'WHERE `key` = ? AND `tag` IS ?',
             (sk, tag)
         )
-        cursor.row_factory = dict_factory
+        cursor.row_factory = lambda _cursor, _row: {col[0]: _row[idx] for idx, col in enumerate(_cursor.description)}
         row: Optional[Dict[str, Any]] = cursor.fetchone()
         if row:
             row['sk'] = row['key']
@@ -484,17 +614,21 @@ class DiskCache:
             row['value'] = self.store.loads(row['value'], row['vf'])
             return row
 
+    def flush_length(self, now: Time = None) -> None:
+        now = now or current()
+        self.sqlite.session.execute(
+            'UPDATE `info` SET `count` = ('
+            'SELECT COUNT(1) FROM `cache` '
+            'WHERE `expire` IS NULL OR `expire` > ? '
+            ') WHERE `rowid` = 1', (now,)
+        )
+
     @property
     def length(self) -> int:
         stamp = getattr(self, '_length', 0)
         now = current()
         if stamp + 2 < now:
-            self.sqlite.session.execute(
-                'UPDATE `info` SET `count` = ('
-                'SELECT COUNT(1) FROM `cache` '
-                'WHERE `expire` IS NULL OR `expire` > ? '
-                ') WHERE `rowid` = 1', (now, )
-            )
+            self.flush_length(now)
             setattr(self, '_length', now)
         return len(self)
     
@@ -568,6 +702,7 @@ class DiskCache:
                 sv, vf = self.store.dumps(value)
                 if self._create_row(sql, sk, kf, sv, vf, timeout, tag):
                     self._add_count(sql)
+                    self.evict(sql)
                 else:
                     return False
         return True
@@ -591,6 +726,24 @@ class DiskCache:
                 count += 1
                 yield line
             index += 1
+
+    def evict(self, sql) -> None:
+        now: Time = current()
+        pre_evict: Time = getattr(self, '_evict', 0)
+        if pre_evict + 2 <= now:
+            if self.length < self.max_size:
+                return
+            sql(
+                'DELETE FROM `cache` '
+                'WHERE `expire` IS NOT NULL '
+                'AND `expire` < ?',
+                (now,)
+            )
+            self.flush_length(now)
+            if len(self) < self.max_size:
+                return
+            _ = self.evict_policy(sql)
+            setattr(self, '_evict', current())
 
     def __iter__(self) -> Iterable[Tuple[Any, Any, str]]:
         """ Will take up a lot of memory, which needs special

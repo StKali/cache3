@@ -10,7 +10,7 @@ Cache3 is a MIT licensed  safe and lightweight cache library, written in pure-Py
 from typing import List
 
 from cache3.base import AbstractCache, JSONMixin, PickleMixin
-# from cache3.disk import SimpleDiskCache, DiskCache, JsonDiskCache
+from cache3.disk import DiskCache
 from cache3.memory import SimpleCache, SafeCache
 from cache3.setting import PROJECT, VERSION
 
@@ -22,7 +22,6 @@ __version__: str = '.'.join(map(str, VERSION))
 __all__: List[str] = [
     'AbstractCache',
     'SimpleCache', 'SafeCache',
-    'SimpleDiskCache', 'DiskCache', 'JsonDiskCache',
-    'PickleMixin', 'JSONMixin',
+    'DiskCache',
 ]
 
