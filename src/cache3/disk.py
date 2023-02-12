@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # DATE: 2021/9/15
 # Author: clarkmonkey@163.com
-
+import abc
 import pickle
 import warnings
 import functools
@@ -61,7 +61,6 @@ class SQLiteEntry:
             isolation: Optional[str] = None,
             timeout: int = 5,
             pragmas: Optional[Dict[str, Any]] = None,
-            **kwargs,
     ) -> None:
         """
 
@@ -91,37 +90,40 @@ class SQLiteEntry:
             'PRAGMA %s=%s' % item for
             item in (pragmas or default_pragmas).items()
         )
-        if self.created:
-            return
+        if not self.created:
+            init_cache_statements: List[str] = [
+                # cache table
+                'CREATE TABLE IF NOT EXISTS `cache`('
+                '`key` BLOB NOT NULL, '
+                '`kf` INTERGER NOT NULL, '
+                '`value` BLOB, '  # cache accept NULL, (None)
+                '`vf` INTEGER NOT NULL, ' 
+                '`tag` BLOB, '  # accept None
+                '`store` REAL NOT NULL,'
+                '`expire` REAL,'
+                '`access` REAL NOT NULL,'
+                '`access_count` INTEGER DEFAULT 0)',
 
-        init_cache_statements: List[str] = [
-            
-            # cache table
-            'CREATE TABLE IF NOT EXISTS `cache`('
-            '`key` BLOB NOT NULL, '
-            '`kf` INTERGER NOT NULL, '
-            '`value` BLOB, '  # cache accept NULL, (None)
-            '`vf` INTEGER NOT NULL, ' 
-            '`tag` BLOB, '  # accept None
-            '`store` REAL NOT NULL,'
-            '`expire` REAL,'
-            '`access` REAL NOT NULL,'
-            '`access_count` INTEGER DEFAULT 0)',
+                # create index
+                'CREATE UNIQUE INDEX IF NOT EXISTS `idx_key` '
+                'ON `cache`(`key`, `tag`)',
 
-            # create index
-            'CREATE UNIQUE INDEX IF NOT EXISTS `idx_key` '
-            'ON `cache`(`key`, `tag`)',
+                # create info table
+                'CREATE TABLE IF NOT EXISTS `info`('
+                '`key` BLOB NOT NULL, '
+                '`value` BLOB'
+                ')',
 
-            # create info table
-            'CREATE TABLE IF NOT EXISTS `info`('
-            '`count` INTEGER DEFAULT 0)',
+                # set count = 0
+                'CREATE UNIQUE INDEX IF NOT EXISTS `idx_info_key` '
+                'ON `info`(`key`)',
 
-            # set count = 0
-            'INSERT INTO `info`(`count`) VALUES (0)',
-        ]
+                #
+                'INSERT INTO `info`(`key`, `value`) VALUES ("count", 0), ("evict", "lru")',
+            ]
 
-        init_script: str = ';'.join(init_cache_statements)
-        _ = self.session.executescript(init_script)
+            init_script: str = ';'.join(init_cache_statements)
+            _ = self.session.executescript(init_script)
 
     @property
     def created(self) -> bool:
@@ -129,7 +131,7 @@ class SQLiteEntry:
             r'SELECT COUNT(*) FROM sqlite_master '
             r'WHERE `type` = ? AND `name` = ?',
             ('table', 'cache')
-        )
+        ).fetchone()
         (count, ) = row
         return count == 1
 
@@ -206,6 +208,24 @@ class SQLiteEntry:
                 assert self._txn_id == tid
                 self._txn_id = None
                 sql('COMMIT')
+
+    def config(self, key: str, value: Any = empty) -> Any:
+
+        # get
+        if value is empty:
+            (value,) = self.session.execute(
+                f'SELECT `value` FROM `info` WHERE `key` = ?',
+                ('evict', )
+            ).fetchone()
+            return value
+
+        # set
+        else:
+            return self.session.execute(
+                f'UPDATE `info` SET value = ? '
+                f'WHERE `key` = ?',
+                (value, key)
+            ).rowcount == 1
 
 
 class PickleStore:
@@ -293,7 +313,133 @@ def get_expire(timeout: Time, now: Time = None) -> Time:
         return None
     return (now or current()) + timeout
 
-from diskcache import Cache
+
+LRU: int = 0
+LFU: int = 1
+FIFO: int = 2
+
+
+class EvictInterface(abc.ABC):
+
+    name: str = ''
+
+    @abc.abstractmethod
+    def apply(self, sql: QY) -> bool:
+        """"""
+
+    @abc.abstractmethod
+    def unapply(self, sql: QY) -> bool:
+        """"""
+
+    @abc.abstractmethod
+    def evict(self, sql: QY, count: int) -> int:
+        """"""
+
+
+class LRUEvict(EvictInterface):
+
+    name: str = 'lru'
+
+    def apply(self, sql: QY) -> bool:
+        return sql(
+            'CREATE INDEX IF NOT EXISTS idx_lru '
+            'ON cache(`access`)'
+        ).rowcount == 1
+
+    def unapply(self, sql: QY) -> bool:
+        return sql(
+            'DROP INDEX IF EXISTS idx_lru'
+        ).rowcount == 1
+
+    def evict(self, sql: QY, count: int) -> int:
+        return sql(
+            'DELETE FROM `cache` '
+            'WHERE `rowid` IN ('
+            '    SELECT `rowid` '
+            '    FROM `cache` '
+            '    ORDER BY `access` LIMIT ?'
+            ')',
+            (count,)
+        ).rowcount
+
+
+class LFUEvict(EvictInterface):
+
+    name: str = 'lfu'
+
+    def apply(self, sql: QY) -> bool:
+        return sql(
+            'CREATE INDEX IF NOT EXISTS idx_lfu '
+            'ON cache(`access`)'
+        ).rowcount == 1
+
+    def unapply(self, sql: QY) -> bool:
+        return sql(
+            'DROP INDEX IF EXISTS idx_lfu'
+        ).rowcount == 1
+
+    def evict(self, sql: QY, count: int) -> int:
+        return sql(
+            'DELETE FROM `cache` '
+            'WHERE `rowid` IN ('
+            '    SELECT `rowid` '
+            '    FROM `cache` '
+            '    ORDER BY `access_count` LIMIT ?'
+            ')',
+            (count,)
+        ).rowcount
+
+
+class FIFOEvict(EvictInterface):
+
+    name: str = 'fifo'
+
+    def apply(self, sql: QY) -> bool:
+        return sql(
+            'CREATE INDEX IF NOT EXISTS idx_fifo '
+            'ON cache(`store`)'
+        ).rowcount == 1
+
+    def unapply(self, sql: QY) -> bool:
+        return sql(
+            'DROP INDEX IF EXISTS idx_fifo'
+        ).rowcount == 1
+
+    def evict(self, sql: QY, count: int) -> int:
+        return sql(
+            'DELETE FROM `cache` '
+            'WHERE `rowid` IN ('
+            '    SELECT `rowid` '
+            '    FROM `cache` '
+            '    ORDER BY `store` LIMIT ?'
+            ')',
+            (count,)
+        ).rowcount
+
+
+class EvictManager(dict):
+
+    def register(self, evict: Type[EvictInterface]) -> None:
+        if evict.name in self:
+            raise Cache3Error(
+                f'has been registered evict named {evict.name!r}'
+            )
+        self[evict.name] = evict
+
+    def __missing__(self, key) -> None:
+        raise Cache3Error(
+            f'no register evict policy named {key!r}'
+        )
+
+
+evict_manager = EvictManager({
+    LRUEvict.name: LRUEvict,
+    LFUEvict.name: LFUEvict,
+    FIFOEvict.name: FIFOEvict,
+})
+
+
+
 class DiskCache:
 
     def __init__(
@@ -316,6 +462,8 @@ class DiskCache:
         self.sqlite: SQLiteEntry = SQLiteEntry(
             path=self.directory, name=name, **kwargs.pop('sqlite_config', {})
         )
+        self.evict: EvictInterface = self.config_evict(evict_policy)
+
         # pickle storage
         self.store = PickleStore(
             directory=self.directory,
@@ -324,52 +472,17 @@ class DiskCache:
             **kwargs.pop('store_config', {})
         )
 
-        evict_policies: Dict[str, Callable] = {
-            'lru': self.lru_policy,
-            'fifo': self.fifo_policy,
-            'lfu': self.lfu_policy,
-        }
-        self.evict_policy = evict_policies.get(
-            evict_policy.lower(), empty
-        )
-        if self.evict_policy is empty:
-            raise Cache3Error(
-                f'unsupported evict policy {evict_policy!r}'
-            )
+    def config_evict(self, evict_policy: str) -> EvictInterface:
 
-    def lfu_policy(self, sql: QY) -> int:
-        return sql(
-            'DELETE FROM `cache` '
-            'WHERE `rowid` IN ('
-            '   SELECT `rowid` '
-            '   FROM `cache` '
-            '   ORDER BY `access_count` LIMIT ?'
-            ')',
-            (self.evict_size,)
-        ).rowcount
-
-    def lru_policy(self, sql: QY) -> int:
-
-        return sql(
-            'DELETE FROM `cache` '
-            'WHERE `rowid` IN ('
-            '   SELECT `rowid` '
-            '   FROM `cache` '
-            '   ORDER BY `access` LIMIT ?'
-            ')',
-            (self.evict_size,)
-        ).rowcount
-
-    def fifo_policy(self, sql: QY) -> int:
-        return sql(
-            'DELETE FROM `cache` '
-            'WHERE `rowid` IN ('
-            '   SELECT `rowid` '
-            '   FROM `cache` '
-            '   ORDER BY `store` LIMIT ?'
-            ')',
-            (self.evict_size,)
-        ).rowcount
+        pre_evict_policy: str = self.sqlite.config('evict')
+        sql: QY = self.sqlite.session.execute
+        evict: EvictInterface = evict_manager[evict_policy]()
+        if pre_evict_policy != evict_policy:
+            pre_evict: EvictInterface = evict_manager[pre_evict_policy]()
+            pre_evict.unapply(sql)
+            evict.apply(sql)
+            self.sqlite.config('evict', evict_policy)
+        return evict
 
     def set(self, key: Any, value: Any, timeout: Time = None, tag: TG = None) -> bool:
 
@@ -392,7 +505,7 @@ class DiskCache:
             else:
                 if self._create_row(sql, sk, kf, sv, vf, timeout, tag):
                     self._add_count(sql)
-                    self.evict(sql)
+                    self.try_evict(sql)
                 else:
                     return False
         return True
@@ -499,15 +612,15 @@ class DiskCache:
     @staticmethod
     def _sub_count(sql: QY) -> bool:
         return sql(
-            'UPDATE `info` SET `count` = `count` - 1 '
-            'WHERE `ROWID` = 1'
+            'UPDATE `info` SET `value` = `value` - 1 '
+            'WHERE `key` = "count"',
         ).rowcount == 1
 
     @staticmethod
     def _add_count(sql: QY) -> bool:
         return sql(
-            'UPDATE `info` SET `count` = `count` + 1 '
-            'WHERE `rowid` = 1'
+            'UPDATE `info` SET `value` = `value` + 1 '
+            'WHERE `key` = "count"'
         ).rowcount == 1
 
     @staticmethod
@@ -553,8 +666,8 @@ class DiskCache:
             # appropriate value from the unused rowid set.
 
             sql(
-                'UPDATE `info` SET `count` = 0 '
-                'WHERE `rowid` = 1'
+                'UPDATE `info` SET `value` = 0 '
+                'WHERE `key` = "count"'
             )
         return True
 
@@ -579,7 +692,7 @@ class DiskCache:
             return None
         return expire - current()
 
-    def delete(self, key: str, tag: TG = None) -> bool:
+    def delete(self, key: Any, tag: TG = None) -> bool:
 
         sk, _ = self.store.dumps(key)
         with self.sqlite.transact() as sql:
@@ -592,7 +705,7 @@ class DiskCache:
                 self._sub_count(sql)
         return success
 
-    def inspect(self, key: str, tag: TG = None) -> Optional[Dict[str, Any]]:
+    def inspect(self, key: Any, tag: TG = None) -> Optional[Dict[str, Any]]:
         """ Get the details of the key value, including any information,
         access times, recent access time, etc., and even the underlying
         serialized data
@@ -614,13 +727,45 @@ class DiskCache:
             row['value'] = self.store.loads(row['value'], row['vf'])
             return row
 
+    def pop(self, key: Any, default: Any = None, tag: TG = None) -> Any:
+
+        sql: QY = self.sqlite.session.execute
+        sk, kf = self.store.dumps(key)
+        row: ROW = sql(
+            'SELECT `rowid`, `value`, `vf` '
+            'FROM `cache` '
+            'WHERE `key` = ? '
+            'AND `tag` IS ? '
+            'AND (`expire` IS NULL OR `expire` > ?)',
+            (sk, tag, current())
+        ).fetchone()
+        # return the default value if not found key in cache
+        if not row:
+            return default
+        rowid, sv, vf = row
+        value = self.store.loads(sv, vf)
+        for i in range(3):
+            success: bool = sql(
+                'DELETE FROM `cache` '
+                'WHERE `rowid` == ? ',
+                (rowid, )
+            ).rowcount == 1
+            if success:
+                _ = self._sub_count(sql)
+                break
+        else:
+            raise Cache3Error(
+                f'pop error, delete key: {key!r} from cache failed'
+            )
+        return value
+
     def flush_length(self, now: Time = None) -> None:
         now = now or current()
         self.sqlite.session.execute(
-            'UPDATE `info` SET `count` = ('
+            'UPDATE `info` SET `value` = ('
             'SELECT COUNT(1) FROM `cache` '
             'WHERE `expire` IS NULL OR `expire` > ? '
-            ') WHERE `rowid` = 1', (now,)
+            ') WHERE `key` = "count"', (now,)
         )
 
     @property
@@ -727,7 +872,7 @@ class DiskCache:
                 yield line
             index += 1
 
-    def evict(self, sql) -> None:
+    def try_evict(self, sql) -> None:
         now: Time = current()
         pre_evict: Time = getattr(self, '_evict', 0)
         if pre_evict + 2 <= now:
@@ -742,7 +887,7 @@ class DiskCache:
             self.flush_length(now)
             if len(self) < self.max_size:
                 return
-            _ = self.evict_policy(sql)
+            _ = self.evict.evict(sql, self.evict_size)
             setattr(self, '_evict', current())
 
     def __iter__(self) -> Iterable[Tuple[Any, Any, str]]:
@@ -770,11 +915,21 @@ class DiskCache:
 
     def __len__(self) -> int:
         (length, ) = self.sqlite.session.execute(
-            'SELECT `count` '
+            'SELECT `value` '
             'FROM `info` '
-            'WHERE `rowid` = ?', (1, )
+            'WHERE `key` = "count"',
         ).fetchone()
         return length
 
     def __repr__(self) -> str:
         return f'<{type(self).__name__}: {self.location}>'
+
+    def __setitem__(self, key, value) -> None:
+        if self.set(key, value):
+            raise Cache3Error(f'set {key!r} failed')
+
+    def __getitem__(self, key) -> Any:
+        return self.get(key)
+
+    def __delete__(self, instance) -> None:
+        self.delete(instance)
