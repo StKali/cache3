@@ -12,13 +12,12 @@ from pathlib import Path
 from sqlite3.dbapi2 import Connection, Cursor, OperationalError
 from threading import local, get_ident
 from time import time as current, sleep
-from typing import Type, Union, Optional, Dict, Any, List, Tuple, Callable, AnyStr, Iterable
+from typing import Type, Optional, Dict, Any, List, Tuple, Callable, AnyStr, Iterable
 from os import makedirs, getpid, path as op
 from hashlib import md5
-from utils import cached_property, empty
+from .utils import cached_property, empty, lazy, Time, TG, Number, get_expire
 
-Time: Type = Optional[Union[float, int]]
-TG: Type = Optional[str]
+
 QY: Type = Callable[[Any], Cursor]
 ROW: Type = Optional[Tuple[Any,...]]
 
@@ -308,17 +307,6 @@ class PickleStore:
             return fd.read()
 
 
-def get_expire(timeout: Time, now: Time = None) -> Time:
-    if timeout is None:
-        return None
-    return (now or current()) + timeout
-
-
-LRU: int = 0
-LFU: int = 1
-FIFO: int = 2
-
-
 class EvictInterface(abc.ABC):
 
     name: str = ''
@@ -447,8 +435,9 @@ class DiskCache:
             directory: str = '~/.cache3',
             name: str = 'cache.sqlite3',
             max_size: int = 1 << 30,
-            evict_policy: str = 'lru',
-            evict_size: int = 1 << 7,
+            iter_size: int = 1 << 8,   # 每次遍历数据库的大小
+            evict_policy: str = 'lru',    # 数据驱逐策略
+            evict_size: int = 1 << 6,     # 每次驱逐数据的条数
             **kwargs,
     ) -> None:
         self.directory: str = op.expandvars(op.expanduser(directory))
@@ -457,7 +446,7 @@ class DiskCache:
         self.name: str = name
         self.max_size: int = max_size
         self.evict_size: int = evict_size
-        self.iter_size: int = 1 << 7
+        self.iter_size: int = iter_size
         # sqlite
         self.sqlite: SQLiteEntry = SQLiteEntry(
             path=self.directory, name=name, **kwargs.pop('sqlite_config', {})
@@ -468,7 +457,7 @@ class DiskCache:
         self.store = PickleStore(
             directory=self.directory,
             protocol=pickle.HIGHEST_PROTOCOL,
-            raw_max_size=10,
+            raw_max_size=1 << 17,
             **kwargs.pop('store_config', {})
         )
 
@@ -564,7 +553,7 @@ class DiskCache:
                 result[key] = v
         return result
 
-    def incr(self, key: Any, delta: Union[int, float] = 1, tag: TG = None) -> Union[int, float]:
+    def incr(self, key: Any, delta: Number = 1, tag: TG = None) -> Number:
         """ int, float and (str/bytes) not serialize, so add in sql statement.
 
         The increment operation should be implemented through SQLite,
@@ -606,7 +595,7 @@ class DiskCache:
                 )
         return value + delta
 
-    def decr(self, key: Any, delta: Union[int, float]) -> Union[int, float]:
+    def decr(self, key: Any, delta: Number) -> Number:
         return self.incr(key, -delta)
 
     @staticmethod
@@ -933,3 +922,6 @@ class DiskCache:
 
     def __delete__(self, instance) -> None:
         self.delete(instance)
+
+
+LazyDiskCache = lazy(DiskCache)

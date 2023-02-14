@@ -3,29 +3,23 @@
 # DATE: 2021/7/24
 # Author: clarkmonkey@163.com
 
-from contextlib import AbstractContextManager
-from typing import Any, NoReturn, Optional, Callable
+import operator
+from typing import Any, NoReturn, Optional, Callable, Type, Union
 
 # Compatible with multiple types.
-empty: Any = object()
+empty: Any = type('empty', (), {
+    '__str__': lambda x: '<empty>',
+    '__bool__': lambda x: False,
+})
+Number: Type = Union[int, float]
+Time: Type = Optional[Number]
+TG: Type = Optional[str]
 
 
-class NullContext(AbstractContextManager):
-    """ Context manager that does no additional processing.
-
-    Used as a stand-in for a normal context manager, when a particular
-    block of code is only sometimes used with a normal context manager:
-
-    cm = optional_cm if condition else nullcontext()
-    with cm:
-        # Perform operation, using optional_cm if condition is True
-    """
-
-    def __enter__(self) -> Any:
-        """ empty method ... """
-
-    def __exit__(self, *exc: Any) -> NoReturn:
-        """ empty method ... """
+def get_expire(timeout: Time, now: Time = None) -> Time:
+    if timeout is None:
+        return None
+    return (now or current()) + timeout
 
 
 class cached_property:
@@ -65,3 +59,85 @@ class cached_property:
             return self
         res = instance.__dict__[self.name] = self.func(instance)
         return res
+
+
+def new_method_proxy(func) -> Callable:
+    def inner(self, *args):
+        if self._wrapped is empty:
+            self._setup()
+        return func(self._wrapped, args)
+    return inner
+
+
+class LazyObject:
+    """"""
+
+    _wrapped = None
+
+    def __init__(self, factory: Callable) -> None:
+        self.__dict__['_setup_factory'] = factory
+        self._wrapped = empty
+
+    __getattr__ = new_method_proxy(getattr)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name == "_wrapped":
+            self.__dict__["_wrapped"] = value
+        else:
+            if self._wrapped is empty:
+                self._setup()
+            setattr(self._wrapped, name, value)
+    
+    def __delattr__(self, name: str) -> None:
+        if name == "_wrapped":
+            raise TypeError('cannot delete _wrapped')
+        if self._wrapped is empty:
+            self._setup()
+        delattr(self._wrapped, name)
+
+    def _setup(self) -> None:
+        self._wrapped = self._setup_factory()
+    
+    def __reduce__(self) -> str | tuple[Any, ...]:
+        if self._wrapped is empty:
+            self._setup()
+        return (unpickle_lazyobject, (self._wrapped))
+    
+    __bytes__ = new_method_proxy(bytes)
+    __str__ = new_method_proxy(str)
+    __bool__ = new_method_proxy(bool)
+
+    __dir__ = new_method_proxy(dir)
+
+    __class__ = property(new_method_proxy(operator.attrgetter("__class__")))
+    __eq__ = new_method_proxy(operator.eq)
+    __lt__ = new_method_proxy(operator.lt)
+    __gt__ = new_method_proxy(operator.gt)
+    __ne__ = new_method_proxy(operator.ne)
+    __hash__ = new_method_proxy(hash)
+
+    __getitem__ = new_method_proxy(operator.getitem)
+    __setitem__ = new_method_proxy(operator.setitem)
+    __delitem__ = new_method_proxy(operator.delitem)
+    __iter__ = new_method_proxy(iter)
+    __len__ = new_method_proxy(len)
+    __contains__ = new_method_proxy(operator.contains)
+
+    def __repr__(self) -> str:
+        if self._wrapped is empty:
+            repr_attr = self._setup_factory
+        else:
+            repr_attr = self._wrapped
+        return f'{type(self).__name__}: {repr_attr!r}'
+
+
+def unpickle_lazyobject(wrapped) -> Any:
+    return wrapped
+
+
+def lazy(factory: Callable) -> Callable:
+    def wrapper(*args, **kwrags):
+        def init():
+            return factory(*args, **kwrags)
+        return LazyObject(init)
+    return wrapper
