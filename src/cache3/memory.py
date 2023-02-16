@@ -48,8 +48,8 @@ class MiniCache:
         self.evict_size: int = evict_size
         self.evict_policy: str = evict_policy
         self._lock: LK = Lock() if thread_safe else NullContext()
-        self._cache: Dict[Any, Any] = OrderedDict()
-        self._expires: Dict[Any, Any] = OrderedDict()
+        self._cache: OrderedDict = OrderedDict()
+        self._expires: OrderedDict = OrderedDict()
 
     def set(self, key: Any, value: Any, timeout: Time = None) -> bool:
         with self._lock:
@@ -76,10 +76,31 @@ class MiniCache:
         with self._lock:
             self._del(key)
     
-    def clear(self) -> bool:
+    def clear(self) -> None:
         with self._lock:
             self._cache.clear()
             self._expires.clear()
+
+    def memoize(self, tag: TG = None, timeout: Time = None) -> Callable[[TG, Time], Callable]:
+        """ The cache is decorated with the return value of the function,
+        and the timeout is available. """
+
+        def decorator(func) -> Callable[[Callable[[Any], Any]], Any]:
+            """ Decorator created by memoize() for callable `func`."""
+            if callable(func):
+                raise TypeError(
+                    "Name cannot be callable. ('@cache.memoize()' not '@cache.memoize')."
+                )
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs) -> Any:
+                """Wrapper for callable to cache arguments and return values."""
+                value: Any = self.get(func.__name__, empty, tag)
+                if value is empty:
+                    value: Any = func(*args, **kwargs)
+                    self.set(func.__name__, value, timeout, tag)
+                return value
+            return wrapper
+        return decorator
 
     def incr(self, key: Any, delta: Number = 1) -> Number:
         with self._lock:
@@ -108,13 +129,20 @@ class MiniCache:
                 return False 
             self._expires[key] = get_expire(ttl, now)
         return True
-    
+
+    def pop(self, key: Any) -> Any:
+        with self._lock:
+            if self._has_expired(key):
+                raise KeyError(f'key {key!r} not found in cache')
+            del self._expires[key]
+            return self._cache.pop(key)
+
     def ttl(self, key: Any) -> Time:
         if self._has_expired(key):
             return -1
         return self._expires.get(key, -1)
 
-    def inspect(self, key: Any) -> Dict[str, Any]:
+    def inspect(self, key: Any) -> Optional[Dict[str, Any]]:
         
         if key not in self._cache:
             return None
@@ -127,6 +155,9 @@ class MiniCache:
             'expire': expire,
             'ttl': expire - current() 
         }
+
+    def items(self) -> Iterable[Tuple[Any, ...]]:
+        return self._cache.items()
 
     def _has_expired(self, key: Any, now: Time = None) -> bool:
         exp: Time = self._expires.get(key, -1)
@@ -143,9 +174,6 @@ class MiniCache:
             del self._expires[key]
         except KeyError:
             ...
-
-    def items(self) -> Iterable[Tuple[Any, ...]]:
-        return self._cache.items()
 
     def __iter__(self) -> Iterable[Tuple[Any, ...]]:
         return iter(self._cache)
@@ -180,7 +208,7 @@ class Cache:
 
     def set(self, key: Any, value: Any, timeout: Time = None, tag: TG = None) -> bool:
         cache = self._caches[tag]
-        cache.set(key, value, timeout)
+        return cache.set(key, value, timeout)
     
     def get(self, key: Any, default: Any = None, tag: TG = None) -> Any:
         cache = self._caches[tag]

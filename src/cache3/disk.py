@@ -233,7 +233,7 @@ class SQLiteEntry:
         # get
         if value is empty:
             (value,) = self.session.execute(
-                f'SELECT `value` FROM `info` WHERE `key` = ?',
+                'SELECT `value` FROM `info` WHERE `key` = ?',
                 ('evict', )
             ).fetchone()
             return value
@@ -241,8 +241,8 @@ class SQLiteEntry:
         # set
         else:
             return self.session.execute(
-                f'UPDATE `info` SET value = ? '
-                f'WHERE `key` = ?',
+                'UPDATE `info` SET value = ? '
+                'WHERE `key` = ?',
                 (value, key)
             ).rowcount == 1
 
@@ -358,21 +358,23 @@ class PickleStore:
             True if delete success else False
         """
 
+
 class EvictInterface(abc.ABC):
 
     name: str = ''
 
     @abc.abstractmethod
     def apply(self, sql: QY) -> bool:
-        """"""
+        """ Will be called when the evict policy is set """
 
     @abc.abstractmethod
     def unapply(self, sql: QY) -> bool:
-        """"""
+        """ Will be called when the evict policy is revoked """
 
     @abc.abstractmethod
     def evict(self, sql: QY, count: int) -> int:
-        """"""
+        """ Will be called when the cache beyond the max_size  
+        to evict ``count`` data sources """
 
 
 class LRUEvict(EvictInterface):
@@ -478,7 +480,6 @@ evict_manager = EvictManager({
 })
 
 
-
 class DiskCache:
     """ Disk cache based on sqlite and file system """
 
@@ -490,6 +491,7 @@ class DiskCache:
             iter_size: int = 1 << 8,
             evict_policy: str = 'lru',
             evict_size: int = 1 << 6,
+            evict_time: Number = 2,
             charset: Optional[str] = None,
             protocol: int = pickle.HIGHEST_PROTOCOL,
             raw_max_size: int = 1 << 17,
@@ -506,6 +508,7 @@ class DiskCache:
         self.name: str = name
         self.max_size: int = max_size
         self.evict_size: int = evict_size
+        self.evict_time: Number = evict_time
         self.iter_size: int = iter_size
         
         # sqlite
@@ -725,6 +728,27 @@ class DiskCache:
             )
         return True
 
+    def memoize(self, tag: TG = None, timeout: Time = None) -> Callable[[TG, Time], Callable]:
+        """ The cache is decorated with the return value of the function,
+        and the timeout is available. """
+
+        def decorator(func) -> Callable[[Callable[[Any], Any]], Any]:
+            """ Decorator created by memoize() for callable `func`."""
+            if callable(func):
+                raise TypeError(
+                    "Name cannot be callable. ('@cache.memoize()' not '@cache.memoize')."
+                )
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs) -> Any:
+                """Wrapper for callable to cache arguments and return values."""
+                value: Any = self.get(func.__name__, empty, tag)
+                if value is empty:
+                    value: Any = func(*args, **kwargs)
+                    self.set(func.__name__, value, timeout, tag)
+                return value
+            return wrapper
+        return decorator
+
     @cached_property
     def location(self) -> str:
         return (Path(self.directory) / self.name).as_posix()
@@ -826,7 +850,7 @@ class DiskCache:
     def length(self) -> int:
         stamp = getattr(self, '_length', 0)
         now = current()
-        if stamp + 2 < now:
+        if stamp + self.evict_time < now:
             self.flush_length(now)
             setattr(self, '_length', now)
         return len(self)
@@ -901,7 +925,7 @@ class DiskCache:
                 sv, vf = self.store.dumps(value)
                 if self._create_row(sql, sk, kf, sv, vf, timeout, tag):
                     self._add_count(sql)
-                    self.evict(sql)
+                    self.evict.evict(sql, self.evict_size)
                 else:
                     return False
         return True
@@ -929,7 +953,7 @@ class DiskCache:
     def try_evict(self, sql) -> None:
         now: Time = current()
         pre_evict: Time = getattr(self, '_evict', 0)
-        if pre_evict + 2 <= now:
+        if pre_evict + self.evict_time <= now:
             if self.length < self.max_size:
                 return
             sql(
@@ -978,15 +1002,9 @@ class DiskCache:
     def __repr__(self) -> str:
         return f'<{type(self).__name__}: {self.location}>'
 
-    def __setitem__(self, key, value) -> None:
-        if self.set(key, value):
-            raise Cache3Error(f'set {key!r} failed')
-
-    def __getitem__(self, key) -> Any:
-        return self.get(key)
-
-    def __delete__(self, instance) -> None:
-        self.delete(instance)
+    __delete__ = delete
+    __getitem__ = get
+    __setitem__ = set
 
 
 LazyDiskCache = lazy(DiskCache)
