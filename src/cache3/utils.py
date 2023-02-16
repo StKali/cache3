@@ -4,6 +4,7 @@
 # Author: clarkmonkey@163.com
 
 import operator
+from time import time as current
 from typing import Any, NoReturn, Optional, Callable, Type, Union
 
 # Compatible with multiple types.
@@ -16,7 +17,12 @@ Time: Type = Optional[Number]
 TG: Type = Optional[str]
 
 
+class Cache3Error(Exception):
+    """ A simple base expection for cache3 """
+
+
 def get_expire(timeout: Time, now: Time = None) -> Time:
+    """ Returns a timestamp representing the timeout time """
     if timeout is None:
         return None
     return (now or current()) + timeout
@@ -49,7 +55,7 @@ class cached_property:
                 "(%r and %r)." % (self.name, name)
             )
 
-    def __get__(self, instance: Any, cls=None):
+    def __get__(self, instance: Any, cls=None) -> Any:
         """
         Call the function and put the return value in instance.__dict__ so that
         subsequent attribute access on the instance returns the cached value
@@ -70,7 +76,9 @@ def new_method_proxy(func) -> Callable:
 
 
 class LazyObject:
-    """"""
+    """ Accepts a factory function that will be called when the instance is actually accessed 
+    LazyObject will be the proxy object for this instance.
+    """
 
     _wrapped = None
 

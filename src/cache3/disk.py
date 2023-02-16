@@ -2,6 +2,23 @@
 # -*- coding: utf-8 -*-
 # DATE: 2021/9/15
 # Author: clarkmonkey@163.com
+
+""" DiskCache
+
+SQLite and file system based caching.
+
+Provides the APIs of general caching systems. 
+At the same time, all data is stored in the disk (sqlite or data file), 
+so the inter-process data is safe and durable.
+
+The pickle protocol is used to complete the serialization and deserialization 
+of data. Can satisfy most objects in python.
+
+The cache elimination strategy is optional, and currently supports LRU, LFU, 
+and FIFO. If these don't meet your needs, you can register your own cache 
+eviction policies by `evict_manager.register`.
+"""
+
 import abc
 import pickle
 import warnings
@@ -15,7 +32,7 @@ from time import time as current, sleep
 from typing import Type, Optional, Dict, Any, List, Tuple, Callable, AnyStr, Iterable
 from os import makedirs, getpid, path as op
 from hashlib import md5
-from .utils import cached_property, empty, lazy, Time, TG, Number, get_expire
+from .utils import cached_property, empty, lazy, Time, TG, Number, get_expire, Cache3Error
 
 
 QY: Type = Callable[[Any], Cursor]
@@ -28,17 +45,19 @@ BYTES: int = 3
 PICKLE: int = 4
 
 
-class Cache3Error(Exception):
-    """"""
-
-
 if sys.version_info > (3, 10):
     from types import NoneType
 else:
     NoneType: Type = type(None)
 
+# Default filesystem charset
+_default_charset: str = 'UTF-8'
+# Default cache storage path
+_default_dirctory: str = '~/.cache3'
+# Default sqlite3 filename
+_default_name: str = 'default.sqlite3'
 # SQLite pragma configs
-default_pragmas: Dict[str, Any] = {
+_default_pragmas: Dict[str, Any] = {
     'auto_vacuum': 1,
     'cache_size': 1 << 13,  # 8, 192 pages
     'journal_mode': 'wal',
@@ -47,11 +66,11 @@ default_pragmas: Dict[str, Any] = {
     'mmap_size': 1 << 26,  # 64MB
     'synchronous': 1,
 }
-default_charset: str = 'UTF-8'
 
 
 class SQLiteEntry:
-    """ 和 SQLite3 数据库交互的接口，完成链接的打开和释放 """
+    """ SQLite3 database interaction interface, responsible for connection management
+    and transaction commission """
 
     def __init__(
             self,
@@ -61,20 +80,10 @@ class SQLiteEntry:
             timeout: int = 5,
             pragmas: Optional[Dict[str, Any]] = None,
     ) -> None:
-        """
-
-        Args:
-            path: sqlite 文件所在的目录
-            name: sqlite 文件名
-            isolation: 事务级别
-            timeout: sqlite 链接的超时时间
-            pragmas: sqlite3 链接的选项
-            **kwargs: connection 参数
-        """
         self.path: str = path
         self.name: str = name
         self.timeout: int = timeout
-        self.__context: local = local()
+        self.__local: local = local()
         self.__txn: Optional[int] = None
         self.__connect_configure: Dict[str, Any] = {
             'database': op.join(self.path, self.name),
@@ -87,7 +96,7 @@ class SQLiteEntry:
             )
         self.__pragmas_sql: str = ';'.join(
             'PRAGMA %s=%s' % item for
-            item in (pragmas or default_pragmas).items()
+            item in (pragmas or _default_pragmas).items()
         )
         if not self.created:
             init_cache_statements: List[str] = [
@@ -126,6 +135,7 @@ class SQLiteEntry:
 
     @property
     def created(self) -> bool:
+        """ Determine whether the sqlite schema is created """
         row = self.session.execute(
             r'SELECT COUNT(*) FROM sqlite_master '
             r'WHERE `type` = ? AND `name` = ?',
@@ -136,19 +146,23 @@ class SQLiteEntry:
 
     @property
     def session(self) -> Connection:
-        local_pid: int = getattr(self.__context, 'pid', -1)
+        """ Create a sqlite link, every time you get a link, you need to judge 
+        whether the current connection is independently occupied by a single thread 
+        """
+        local_pid: int = getattr(self.__local, 'pid', -1)
         current_pid: int = getpid()
         if local_pid != current_pid:
             self.close()
-            self.__context.pid = current_pid
+            self.__local.pid = current_pid
         session: Optional[Connection] = getattr(
-            self.__context, 'session', None
+            self.__local, 'session', None
         )
         if session is None:
-            session = self.__context.session = Connection(
+            session = self.__local.session = Connection(
                 **self.__connect_configure
             )
             start: Time = current()
+            # try to create connection
             while True:
                 try:
                     session.executescript(self.__pragmas_sql)
@@ -160,16 +174,17 @@ class SQLiteEntry:
                     if diff > 60:
                         raise
                     sleep(0.001)
-            setattr(self.__context, 'session', session)
+            # cached connection
+            setattr(self.__local, 'session', session)
         return session
 
     def close(self) -> bool:
 
-        session: Connection = getattr(self.__context, 'session', None)
+        session: Connection = getattr(self.__local, 'session', None)
         if session is None:
             return True
         session.close()
-        setattr(self.__context, 'session', None)
+        setattr(self.__local, 'session', None)
         return True
 
     @contextmanager
@@ -209,6 +224,11 @@ class SQLiteEntry:
                 sql('COMMIT')
 
     def config(self, key: str, value: Any = empty) -> Any:
+        """ Info table interaction interface
+        
+        Execute get operation when value is empty otherwise perform
+        the set operation
+        """
 
         # get
         if value is empty:
@@ -234,7 +254,7 @@ class PickleStore:
             directory: str,
             protocol: int,
             raw_max_size: int,
-            charset: str = default_charset,
+            charset: str,
     ) -> None:
         self.directory: str = directory
         self.protocol: int = protocol
@@ -246,6 +266,12 @@ class PickleStore:
         return md5(data).hexdigest()
     
     def dumps(self, data: Any) -> Tuple[Any, int]:
+        """ Serialize ``data`` to storage formatted
+
+        Returns:
+            serial_data: dumped data
+            format: data format
+        """
 
         tp: Type = type(data)
 
@@ -277,6 +303,16 @@ class PickleStore:
         return sig, PICKLE
 
     def loads(self, dump: Any, fmt: int) -> Any:
+        """ Deserialize ``dump`` to Python object
+
+        Args:
+            dump: dumped data
+            fmt: dumped formatted
+        
+        Returns:
+            raw data
+        """
+
         if fmt in (RAW, NUMBER):
             return dump
         if fmt == PICKLE:
@@ -290,6 +326,12 @@ class PickleStore:
             return data.decode(self.charset)
 
     def write(self, sig: str, data: bytes) -> None:
+        """ write data to file
+        
+        Args:
+            sig: file name (default md5 value of file content)
+            data: file content 
+        """
         file: str = op.join(self.directory, sig)
         if not op.exists(file):
             return None
@@ -306,6 +348,15 @@ class PickleStore:
         with open(file, 'rb') as fd:
             return fd.read()
 
+    def delete(self, sig: str) -> bool:
+        """ delete cached file
+
+        Args:
+            sig: cached file name
+        
+        Returns:
+            True if delete success else False
+        """
 
 class EvictInterface(abc.ABC):
 
@@ -429,36 +480,50 @@ evict_manager = EvictManager({
 
 
 class DiskCache:
+    """ Disk cache based on sqlite and file system """
 
     def __init__(
             self,
-            directory: str = '~/.cache3',
-            name: str = 'cache.sqlite3',
+            directory: str = _default_dirctory,
+            name: str = _default_name,
             max_size: int = 1 << 30,
-            iter_size: int = 1 << 8,   # 每次遍历数据库的大小
-            evict_policy: str = 'lru',    # 数据驱逐策略
-            evict_size: int = 1 << 6,     # 每次驱逐数据的条数
-            **kwargs,
+            iter_size: int = 1 << 8,
+            evict_policy: str = 'lru',
+            evict_size: int = 1 << 6,
+            charset: Optional[str] = None,
+            protocol: int = pickle.HIGHEST_PROTOCOL,
+            raw_max_size: int = 1 << 17,
+            isolation: Optional[str] = None,
+            timeout: Time = None,
+            pragams: Optional[Dict[str, Any]] = None,
+
     ) -> None:
+
         self.directory: str = op.expandvars(op.expanduser(directory))
         if not op.exists(self.directory):
             makedirs(self.directory, exist_ok=True)
+        
         self.name: str = name
         self.max_size: int = max_size
         self.evict_size: int = evict_size
         self.iter_size: int = iter_size
+        
         # sqlite
         self.sqlite: SQLiteEntry = SQLiteEntry(
-            path=self.directory, name=name, **kwargs.pop('sqlite_config', {})
+            path=self.directory, 
+            name=name,
+            isolation=isolation,
+            timeout=timeout,
+            pragmas=pragams or _default_pragmas,
         )
         self.evict: EvictInterface = self.config_evict(evict_policy)
 
         # pickle storage
         self.store = PickleStore(
             directory=self.directory,
-            protocol=pickle.HIGHEST_PROTOCOL,
-            raw_max_size=1 << 17,
-            **kwargs.pop('store_config', {})
+            protocol=protocol,
+            raw_max_size=raw_max_size,
+            charset=charset or _default_charset,
         )
 
     def config_evict(self, evict_policy: str) -> EvictInterface:
