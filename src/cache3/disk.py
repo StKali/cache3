@@ -53,7 +53,7 @@ else:
 # Default filesystem charset
 _default_charset: str = 'UTF-8'
 # Default cache storage path
-_default_dirctory: str = '~/.cache3'
+_default_directory: str = '~/.cache3'
 # Default sqlite3 filename
 _default_name: str = 'default.sqlite3'
 # SQLite pragma configs
@@ -76,8 +76,8 @@ class SQLiteEntry:
             self,
             path: str,
             name: str,
-            isolation: Optional[str] = None,
-            timeout: int = 5,
+            isolation: Optional[str],
+            timeout: int,
             pragmas: Optional[Dict[str, Any]] = None,
     ) -> None:
         self.path: str = path
@@ -485,7 +485,7 @@ class DiskCache:
 
     def __init__(
             self,
-            directory: str = _default_dirctory,
+            directory: str = _default_directory,
             name: str = _default_name,
             max_size: int = 1 << 30,
             iter_size: int = 1 << 8,
@@ -496,8 +496,8 @@ class DiskCache:
             protocol: int = pickle.HIGHEST_PROTOCOL,
             raw_max_size: int = 1 << 17,
             isolation: Optional[str] = None,
-            timeout: Time = None,
-            pragams: Optional[Dict[str, Any]] = None,
+            timeout: Time = 5,
+            pragmas: Optional[Dict[str, Any]] = None,
 
     ) -> None:
 
@@ -517,7 +517,7 @@ class DiskCache:
             name=name,
             isolation=isolation,
             timeout=timeout,
-            pragmas=pragams or _default_pragmas,
+            pragmas=pragmas or _default_pragmas,
         )
         self.evict: EvictInterface = self.config_evict(evict_policy)
 
@@ -914,10 +914,10 @@ class DiskCache:
                 'AND `tag` IS ?',
                 (sk, tag)
             ).fetchone()
-
+            print(row)
             if row:
                 (rowid, expire) = row
-                if expire and expire > current():
+                if expire is None or expire > current():
                     return False
                 sv, vf = self.store.dumps(value)
                 return self._update_row(sql, rowid, sv, vf, timeout, tag)
@@ -925,10 +925,10 @@ class DiskCache:
                 sv, vf = self.store.dumps(value)
                 if self._create_row(sql, sk, kf, sv, vf, timeout, tag):
                     self._add_count(sql)
-                    self.evict.evict(sql, self.evict_size)
+                    self.try_evict(sql)
+                    return True
                 else:
                     return False
-        return True
 
     def iter(self, tag: TG = None) -> Iterable[Tuple[Any, Any]]:
 

@@ -2,14 +2,14 @@
 # -*- coding: utf-8 -*-
 # DATE: 2021/7/24
 # Author: clarkmonkey@163.com
-
+import functools
 from collections import OrderedDict
 from contextlib import AbstractContextManager
 from threading import Lock
 from time import time as current
-from typing import Dict, Any, Iterable, Type, Optional, NoReturn, Tuple, Union
+from typing import Dict, Any, Iterable, Type, Optional, NoReturn, Tuple, Union, Callable
 
-from .utils import Time, TG, Number, get_expire
+from .utils import Time, TG, Number, get_expire, empty
 
 
 class NullContext(AbstractContextManager):
@@ -60,7 +60,7 @@ class MiniCache:
         
         with self._lock:
             if self._has_expired(key):
-                self.delete(key)
+                self._del(key)
                 return default
             return self._cache.get(key, default)
 
@@ -76,10 +76,11 @@ class MiniCache:
         with self._lock:
             self._del(key)
     
-    def clear(self) -> None:
+    def clear(self) -> bool:
         with self._lock:
             self._cache.clear()
             self._expires.clear()
+        return True
 
     def memoize(self, tag: TG = None, timeout: Time = None) -> Callable[[TG, Time], Callable]:
         """ The cache is decorated with the return value of the function,
@@ -130,9 +131,11 @@ class MiniCache:
             self._expires[key] = get_expire(ttl, now)
         return True
 
-    def pop(self, key: Any) -> Any:
+    def pop(self, key: Any, default: Any = empty) -> Any:
         with self._lock:
             if self._has_expired(key):
+                if default is not empty:
+                    return default
                 raise KeyError(f'key {key!r} not found in cache')
             del self._expires[key]
             return self._cache.pop(key)
@@ -217,6 +220,10 @@ class Cache:
     def ex_set(self, key: Any, value: Any, timeout: Time = None, tag: TG = None) -> bool:
         cache = self._caches[tag]
         return cache.ex_set(key, value, timeout)
+
+    def pop(self, key: Any, default: Any = empty, tag: TG = None) -> Any:
+        cache = self._caches[tag]
+        return cache.pop(key, default)
     
     def delete(self, key: Any, tag: TG = None) -> bool:
         cache = self._caches[tag]

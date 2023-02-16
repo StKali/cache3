@@ -5,7 +5,7 @@
 
 import operator
 from time import time as current
-from typing import Any, NoReturn, Optional, Callable, Type, Union
+from typing import Any, NoReturn, Optional, Callable, Type, Union, Tuple
 
 # Compatible with multiple types.
 empty: Any = type('empty', (), {
@@ -106,7 +106,7 @@ class LazyObject:
     def _setup(self) -> None:
         self._wrapped = self._setup_factory()
     
-    def __reduce__(self) -> str | tuple[Any, ...]:
+    def __reduce__(self) -> Union[str, Tuple[Any, ...]]:
         if self._wrapped is empty:
             self._setup()
         return (unpickle_lazyobject, (self._wrapped))
