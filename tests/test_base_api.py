@@ -3,10 +3,11 @@
 # date: 2023/2/15
 
 import pytest
-
-params = pytest.mark.parametrize
 from cache3.utils import empty
 from cache3 import MiniCache, Cache, DiskCache
+
+params = pytest.mark.parametrize
+raises = pytest.raises
 
 key_types_cases = [
     # string
@@ -34,11 +35,14 @@ key_types_cases = [
 
 class TestGeneralCacheApi:
 
-    def setup(self):
+    def setup_class(self):
         self.caches = [
             Cache('memory_cache'),
             DiskCache('disk_cache'),
         ]
+
+    def setup_method(self):
+        assert all((cache.clear() for cache in self.caches))
 
     @params('key, value', key_types_cases)
     def test_set_get(self, key, value):
@@ -61,7 +65,39 @@ class TestGeneralCacheApi:
             assert len(cache) == 1
             assert cache.clear()
             assert len(cache) == 0
+
     def test_ex_set(self):
         for cache in self.caches:
             assert cache.ex_set('name', None)
             assert not cache.ex_set('name', None)
+
+    def test_incr_decr(self):
+        count = 'count'
+        for cache in self.caches:
+            assert cache.set(count, 0)
+            assert cache.incr(count, 1) == 1
+            assert cache.decr(count, 1) == 0
+            
+            with raises(KeyError, match='key .* not found in cache'):
+                cache.incr('no-existed')
+            
+            cache.set('not-number', 'a')
+            with raises(TypeError, match='unsupported operand type'):
+                cache.incr('not-number') 
+
+    @params('key, value, tag', [
+        ('name', 'value', None),
+        (empty, 'empty', None),
+        (1111, 1111, None),
+        (1111, 1111, 'tag-1'),
+        ('empty', empty, 'tag-1'),
+        ('empty', 'empty', 'tag-2'),
+    ])
+    def test_has_key(self, key, value, tag):
+        for cache in self.caches:
+            cache.set(key, value, tag=tag)
+            assert cache.has_key(key, tag=tag)
+            cache.delete(key, tag=tag)
+            assert not cache.has_key(key, tag=tag)
+    
+

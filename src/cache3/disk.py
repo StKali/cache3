@@ -232,18 +232,21 @@ class SQLiteEntry:
 
         # get
         if value is empty:
-            (value,) = self.session.execute(
-                'SELECT `value` FROM `info` WHERE `key` = ?',
-                ('evict', )
+            row: ROW = self.session.execute(
+                'SELECT `value` ' 
+                'FROM `info` '
+                'WHERE `key` = ?',
+                (key, )
             ).fetchone()
-            return value
-
+            return row[0] if row else None
         # set
         else:
             return self.session.execute(
-                'UPDATE `info` SET value = ? '
-                'WHERE `key` = ?',
-                (value, key)
+                'INSERT INTO `info`(`key`, `value`) '
+                'VALUES (?, ?) '
+                'ON CONFLICT (`key`) '
+                'DO UPDATE SET `value` = ? ',
+                (key, value, value)
             ).rowcount == 1
 
 
@@ -292,7 +295,9 @@ class PickleStore:
         if tp is bytes:
             if len(data) / 8 < self.raw_max_size:
                 return data, BYTES
-            return self.signature(data), BYTES
+            sig: str = self.signature(data)
+            self.write(sig, data)
+            return sig, BYTES
         
         # pickle
         pickled: bytes = pickle.dumps(data, protocol=self.protocol)
@@ -333,7 +338,7 @@ class PickleStore:
             data: file content 
         """
         file: str = op.join(self.directory, sig)
-        if not op.exists(file):
+        if op.exists(file):
             return None
         with open(file, 'wb') as fd:
             _ = fd.write(data)
@@ -640,13 +645,14 @@ class DiskCache:
                 (sk, tag, current())
             ).fetchone()
             if not row:
-                raise KeyError(f'key {key!r} not found')
+                raise KeyError(f'key {key!r} not found in cache')
 
             sv, vf = row
             value = self.store.loads(sv, vf)
-            if vf != NUMBER:
+            # only supported integer and float
+            if vf != NUMBER or not isinstance(delta, (int, float)):
                 raise TypeError(
-                    f'unsupported operand type(s) for +: {type(value)!r} and {type(delta)!r}'
+                    f'unsupported operand type(s) for +/-: {type(value)!r} and {type(delta)!r}'
                 )
             for i in range(3):
                 rowcount: int = sql(
@@ -914,7 +920,6 @@ class DiskCache:
                 'AND `tag` IS ?',
                 (sk, tag)
             ).fetchone()
-            print(row)
             if row:
                 (rowid, expire) = row
                 if expire is None or expire > current():

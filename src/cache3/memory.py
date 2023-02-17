@@ -82,7 +82,7 @@ class MiniCache:
             self._expires.clear()
         return True
 
-    def memoize(self, tag: TG = None, timeout: Time = None) -> Callable[[TG, Time], Callable]:
+    def memoize(self, timeout: Time = None) -> Callable[[TG, Time], Callable]:
         """ The cache is decorated with the return value of the function,
         and the timeout is available. """
 
@@ -95,10 +95,10 @@ class MiniCache:
             @functools.wraps(func)
             def wrapper(*args, **kwargs) -> Any:
                 """Wrapper for callable to cache arguments and return values."""
-                value: Any = self.get(func.__name__, empty, tag)
+                value: Any = self.get(func.__name__, empty)
                 if value is empty:
                     value: Any = func(*args, **kwargs)
-                    self.set(func.__name__, value, timeout, tag)
+                    self.set(func.__name__, value, timeout)
                 return value
             return wrapper
         return decorator
@@ -108,7 +108,12 @@ class MiniCache:
             if self._has_expired(key):
                 self._del(key)
                 raise KeyError(f'key {key!r} not found in cache')
-            value = self._cache[key] + delta
+            value = self._cache[key]
+            if not isinstance(value, (int, float)) or not isinstance(delta, (int, float)):
+                raise TypeError(
+                    f'unsupported operand type(s) for +/-: {type(value)!r} and {type(delta)!r}'
+                )
+            value += delta
             self._cache[key] = value
             self._cache.move_to_end(key, last=False)
         return value
