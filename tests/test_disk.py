@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # date: 2023/2/15
+import pickle
+from pathlib import Path
 
 import pytest
-from cache3.disk import SQLiteEntry, PickleStore, DiskCache
+from cache3.disk import SQLiteEntry, PickleStore, empty, BYTES, NUMBER, STRING, RAW, PICKLE
 from sqlite3 import Connection
 from threading import Thread
+from utils import rand_string, rand_strings
 
 raises = pytest.raises
 

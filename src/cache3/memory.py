@@ -148,6 +148,7 @@ class MiniCache:
     def ttl(self, key: Any) -> Time:
         if self._has_expired(key):
             return -1
+        print(self._expires)
         return self._expires.get(key, -1)
 
     def inspect(self, key: Any) -> Optional[Dict[str, Any]]:
@@ -161,7 +162,7 @@ class MiniCache:
             'key': key,
             'value': self._cache[key],
             'expire': expire,
-            'ttl': expire - current() 
+            'ttl': expire if expire is None else expire - current()
         }
 
     def items(self) -> Iterable[Tuple[Any, ...]]:

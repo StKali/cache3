@@ -766,7 +766,7 @@ class DiskCache:
             'FROM `cache` '
             'WHERE `key` = ? '
             'AND `tag` IS ? '
-            'AND `expire` IS NULL OR `expire` > ?',
+            'AND (`expire` IS NULL OR `expire` > ?)',
             (sk, tag, current())
         ).fetchone()
         if not row:

@@ -99,5 +99,31 @@ class TestGeneralCacheApi:
             assert cache.has_key(key, tag=tag)
             cache.delete(key, tag=tag)
             assert not cache.has_key(key, tag=tag)
-    
 
+    def test_touch(self):
+        for cache in self.caches:
+            cache.set('name', 'value', timeout=10)
+            assert cache.touch('name', 100)
+            assert cache.ttl('name') > 99
+            assert not cache.touch('not-existed')
+
+    def test_pop(self):
+        for cache in self.caches:
+            cache.set('key', 'value')
+            assert cache.has_key('key')
+            assert cache.pop('key') == 'value'
+            value = cache.pop('key', default=None)
+            assert value is None
+            try:
+                cache.pop('key')
+            except KeyError:
+                ...
+
+    def test_ttl(self):
+        for cache in self.caches:
+            cache.set('key1', 'value', timeout=100)
+            assert cache.ttl('key1') > 99
+            assert not cache.has_key('key2')
+            cache.set('key2', 'value')
+            assert cache.ttl('key2') is None
+            assert cache.ttl('not-existed') == -1
