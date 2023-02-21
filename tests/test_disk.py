@@ -6,12 +6,13 @@ from pathlib import Path
 
 import pytest
 from cache3.disk import SQLiteEntry, PickleStore, empty, BYTES, NUMBER, STRING, RAW, PICKLE
+from cache3.utils import Cache3Error, Cache3Warning
 from sqlite3 import Connection
 from threading import Thread
 from utils import rand_string, rand_strings
 
 raises = pytest.raises
-
+warns = pytest.warns
 
 class TestSQLiteEntry:
 
@@ -108,4 +109,21 @@ class TestPickleStore:
         assert f == PICKLE 
         assert store.loads(v, f) == empty
 
+        big_object = list('1' * 100000)
+        v, f = store.dumps(big_object)
+        assert f == PICKLE
+        assert store.loads(v, f) == big_object
 
+        # stored file has been deleted
+        v, f = store.dumps(big_string)
+        assert v == store.signature(big_string.encode('UTF-8'))
+        assert f == STRING
+        assert store.loads(v, f) == big_string
+
+        # store file deleted
+        assert store.delete(v) == True
+        with warns(Cache3Warning):
+            assert store.loads(v, f) is None
+        
+        # test delete
+        assert store.delete(v) == False

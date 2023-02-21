@@ -5,6 +5,7 @@
 import pytest
 from cache3.utils import empty
 from cache3 import MiniCache, Cache, DiskCache
+from utils import rand_strings, rand_string
 
 params = pytest.mark.parametrize
 raises = pytest.raises
@@ -127,3 +128,41 @@ class TestGeneralCacheApi:
             cache.set('key2', 'value')
             assert cache.ttl('key2') is None
             assert cache.ttl('not-existed') == -1
+
+    def test_keys(self):
+
+        count = 104
+        keys = list(rand_strings(count, 4, 20))
+        for cache in self.caches:
+            for key in keys:
+                cache.set(key, rand_string(4, 20))
+            assert len(cache) == count
+            assert list(cache.keys()).sort() == keys.sort()
+
+        assert list(cache.keys(tag='not-exited-tag')) == []
+        assert list(cache.keys(tag=None)) != []
+
+    def test_values(self):
+        count = 104
+        values = list(rand_strings(count, 4, 20))
+        for cache in self.caches:
+            for value in values:
+                cache.set(value, rand_string(4, 20))
+            assert len(cache) == count
+            assert list(cache.values()).sort() == values.sort()
+
+        assert list(cache.values(tag='not-exited-tag')) == []
+        assert list(cache.values(tag=None)) != []
+    
+    def test_items(self):
+        count = 104
+        keys = list(rand_strings(count, 4, 20))
+        values = list(rand_strings(count, 4, 20))
+        for cache in self.caches:
+            for k, v in zip(keys, values):
+                cache.set(k, v)
+            items_data = list(cache.items())
+            assert len(items_data) == count 
+            assert len(items_data[0]) == 3
+
+

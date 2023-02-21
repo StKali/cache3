@@ -29,10 +29,10 @@ from pathlib import Path
 from sqlite3.dbapi2 import Connection, Cursor, OperationalError
 from threading import local, get_ident
 from time import time as current, sleep
-from typing import Type, Optional, Dict, Any, List, Tuple, Callable, AnyStr, Iterable
-from os import makedirs, getpid, path as op
+from typing import Type, Optional, Dict, Any, List, Tuple, Callable, Iterable
+from os import makedirs, getpid, remove as rmfile, path as op
 from hashlib import md5
-from .utils import cached_property, empty, lazy, Time, TG, Number, get_expire, Cache3Error
+from .utils import cached_property, empty, lazy, Time, TG, Number, get_expire, Cache3Error, Cache3Warning
 
 
 QY: Type = Callable[[Any], Cursor]
@@ -294,7 +294,7 @@ class PickleStore:
         # bytes
         if tp is bytes:
             if len(data) / 8 < self.raw_max_size:
-                return data, BYTES
+                return data, RAW
             sig: str = self.signature(data)
             self.write(sig, data)
             return sig, BYTES
@@ -324,7 +324,11 @@ class PickleStore:
             if isinstance(dump, str):
                 dump: bytes = self.read(dump)
             return pickle.loads(dump)
-        data: bytes = self.read(dump)
+        data: Optional[bytes] = self.read(dump)
+        # stored file has been deleted 
+        if data is None:
+            return None
+
         if fmt == BYTES:
             return data
         if fmt == STRING:
@@ -343,12 +347,14 @@ class PickleStore:
         with open(file, 'wb') as fd:
             _ = fd.write(data)
 
-    def read(self, sig: str) -> Optional[AnyStr]:
+    def read(self, sig: str) -> Optional[bytes]:
 
         file: str = op.join(self.directory, sig)
         # FIXME: the value reference by many key(s)
         if not op.exists(file):
-            warnings.warn('')
+            warnings.warn(
+                f'stored file:{file} not found', Cache3Warning
+            )
             return None
         with open(file, 'rb') as fd:
             return fd.read()
@@ -362,6 +368,12 @@ class PickleStore:
         Returns:
             True if delete success else False
         """
+
+        try:
+            rmfile(op.join(self.directory, sig))
+            return True
+        except OSError:
+            return False
 
 
 class EvictInterface(abc.ABC):
@@ -466,10 +478,17 @@ class FIFOEvict(EvictInterface):
 class EvictManager(dict):
 
     def register(self, evict: Type[EvictInterface]) -> None:
+
+        if not issubclass(evict, EvictInterface):
+            raise Cache3Error(
+                'evict msut be inherit `EvictInterface` class'
+            )
+
         if evict.name in self:
             raise Cache3Error(
                 f'has been registered evict named {evict.name!r}'
             )
+            
         self[evict.name] = evict
 
     def __missing__(self, key) -> None:
@@ -734,27 +753,6 @@ class DiskCache:
             )
         return True
 
-    def memoize(self, tag: TG = None, timeout: Time = None) -> Callable[[TG, Time], Callable]:
-        """ The cache is decorated with the return value of the function,
-        and the timeout is available. """
-
-        def decorator(func) -> Callable[[Callable[[Any], Any]], Any]:
-            """ Decorator created by memoize() for callable `func`."""
-            if callable(func):
-                raise TypeError(
-                    "Name cannot be callable. ('@cache.memoize()' not '@cache.memoize')."
-                )
-            @functools.wraps(func)
-            def wrapper(*args, **kwargs) -> Any:
-                """Wrapper for callable to cache arguments and return values."""
-                value: Any = self.get(func.__name__, empty, tag)
-                if value is empty:
-                    value: Any = func(*args, **kwargs)
-                    self.set(func.__name__, value, timeout, tag)
-                return value
-            return wrapper
-        return decorator
-
     @cached_property
     def location(self) -> str:
         return (Path(self.directory) / self.name).as_posix()
@@ -973,28 +971,97 @@ class DiskCache:
             _ = self.evict.evict(sql, self.evict_size)
             setattr(self, '_evict', current())
 
-    def __iter__(self) -> Iterable[Tuple[Any, Any, str]]:
-        """ Will take up a lot of memory, which needs special
-        attention when there are a lot of data.
-        Conservatively, this method is not recommended to be called
-        It is only applicable to those scenarios with small data scale
-        or for testing.
-        """
+    def keys(self, tag: TG = empty) -> Iterable[Tuple[Any, str]]:
         now: Time = current()
         n: int = self.length // self.iter_size + 1
         sql: QY = self.sqlite.session.execute
-        for i in range(n):
-            for line in sql(
-                'SELECT `key`, `kf`, `value`, `vf`, `tag` '
-                'FROM `cache` '
-                'WHERE (`expire` IS NULL OR `expire` > ?) '
-                'ORDER BY `store`'
-                'LIMIT ? OFFSET ?',
-                (now, self.iter_size, self.iter_size * i)
-            ):
-                if line:
-                    sk, kf, sv, vf, tag = line
-                    yield self.store.loads(sk, kf), self.store.loads(sv, vf), tag
+        if tag is empty:
+            for i in range(n):
+                for line in sql(
+                    'SELECT `key`, `kf`, `tag` '
+                    'FROM `cache` '
+                    'WHERE (`expire` IS NULL OR `expire` > ?) '
+                    'ORDER BY `store` '
+                    'LIMIT ? OFFSET ?',
+                    (now, self.iter_size, self.iter_size * i)
+                ):
+                    if line:
+                        yield self.store.loads(*line[:2]), line[2]
+        else:
+            for i in range(n):
+                for line in sql(
+                    'SELECT `key`, `kf` '
+                    'FROM `cache` '
+                    'WHERE (`expire` IS NULL OR `expire` > ?) '
+                    'AND `tag` IS ? '
+                    'ORDER BY `store` '
+                    'LIMIT ? OFFSET ?',
+                    (now, tag, self.iter_size, self.iter_size * i)
+                ):
+                    if line:
+                        yield self.store.loads(*line[:2])
+
+    def values(self, tag: TG = empty) -> Iterable[Tuple[Any, str]]:
+        now: Time = current()
+        n: int = self.length // self.iter_size + 1
+        sql: QY = self.sqlite.session.execute
+        if tag is empty:
+            for i in range(n):
+                for line in sql(
+                    'SELECT `value`, `vf`, `tag` '
+                    'FROM `cache` '
+                    'WHERE (`expire` IS NULL OR `expire` > ?) '
+                    'ORDER BY `store`'
+                    'LIMIT ? OFFSET ?',
+                    (now, self.iter_size, self.iter_size * i)
+                ):
+                    if line:
+                        yield self.store.loads(*line[:2]), line[2]
+        else:
+            for i in range(n):
+                for line in sql(
+                    'SELECT `value`, `vf` '
+                    'FROM `cache` '
+                    'WHERE (`expire` IS NULL OR `expire` > ?) '
+                    'AND `tag` IS ? '
+                    'ORDER BY `store` '
+                    'LIMIT ? OFFSET ? ',
+                    (now, tag, self.iter_size, self.iter_size * i)
+                ):
+                    if line:
+                        yield self.store.loads(*line)
+
+    def items(self, tag: TG = empty) -> Iterable[Tuple[Any, Any, str]]:
+        
+        now: Time = current()
+        n: int = self.length // self.iter_size + 1
+        sql: QY = self.sqlite.session.execute
+        if tag is empty:
+            for i in range(n):
+                for line in sql(
+                    'SELECT `key`, `kf`, `value`, `vf`, `tag` '
+                    'FROM `cache` '
+                    'WHERE (`expire` IS NULL OR `expire` > ?) '
+                    'ORDER BY `store`'
+                    'LIMIT ? OFFSET ?',
+                    (now, self.iter_size, self.iter_size * i)
+                ):
+                    print(line)
+                    if line:
+                        yield self.store.loads(*line[:2]), self.store.loads(*line[2:4]), line[4]
+        else:
+            for i in range(n):
+                for line in sql(
+                    'SELECT `key`, `kf`, `value`, `vf` '
+                    'FROM `cache` '
+                    'WHERE (`expire` IS NULL OR `expire` > ?) '
+                    'AND `tag` IS ? '
+                    'ORDER BY `store` '
+                    'LIMIT ? OFFSET ?',
+                    (now, tag, self.iter_size, self.iter_size * i)
+                ):
+                    if line:
+                        yield self.store.loads(*line[:2]), self.store.loads(*line[2:])
 
     def __len__(self) -> int:
         (length, ) = self.sqlite.session.execute(
@@ -1010,6 +1077,6 @@ class DiskCache:
     __delete__ = delete
     __getitem__ = get
     __setitem__ = set
-
+    __iter__ = keys
 
 LazyDiskCache = lazy(DiskCache)

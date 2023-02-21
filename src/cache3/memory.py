@@ -148,7 +148,6 @@ class MiniCache:
     def ttl(self, key: Any) -> Time:
         if self._has_expired(key):
             return -1
-        print(self._expires)
         return self._expires.get(key, -1)
 
     def inspect(self, key: Any) -> Optional[Dict[str, Any]]:
@@ -164,6 +163,12 @@ class MiniCache:
             'expire': expire,
             'ttl': expire if expire is None else expire - current()
         }
+
+    def keys(self) -> Iterable[Any]:
+        return self._cache.keys()
+
+    def values(self) -> Iterable[Any]:
+        return self._cache.values()
 
     def items(self) -> Iterable[Tuple[Any, ...]]:
         return self._cache.items()
@@ -193,6 +198,7 @@ class MiniCache:
     __delitem__ = delete
     __getitem__ = get
     __setitem__ = set
+    __contain__ = has_key
 
 
 class _Caches(dict):
@@ -264,15 +270,32 @@ class Cache:
         result['tag'] = tag
         return result
     
-    def iter(self, tag: TG = None) -> Iterable[Any]:
-        cache = self._caches[tag]
-        return iter(cache)
+    def items(self, tag: TG = empty) -> Iterable[Tuple[Any, ...]]:
+        if tag is empty:
+            for tag, cache in self._caches.items():
+                for m in cache.items():
+                    yield *m, tag
+        else:
+            cache = self._caches[tag]
+            return cache.items()
 
-    def items(self) -> Iterable[Tuple[Any, ...]]:
-
-        for cache in self._caches.values():
-            for m in cache.items():
-                yield m
+    def keys(self, tag: TG = empty) -> Iterable[Any]:
+        if tag is empty:
+            for cache in self._caches.values():
+                for k in cache:
+                    yield k
+        else:
+            cache = self._caches[tag]
+            return cache.keys()
+    
+    def values(self, tag: TG = empty) -> Iterable[Any]:
+        if tag is empty:
+            for cache in self._caches.values():
+                for v in cache.values():
+                    yield v
+        else:
+            cache = self._caches[tag]
+            return cache.values()
 
     def __iter__(self) -> Iterable[Any]:
         for cache in self._caches.values():
@@ -284,4 +307,3 @@ class Cache:
     
     def __repr__(self) -> str:
         return f'<Cache: buckets({len(self._caches)})>'
-    

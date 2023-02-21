@@ -21,6 +21,10 @@ class Cache3Error(Exception):
     """ A simple base expection for cache3 """
 
 
+class Cache3Warning(UserWarning):
+    """A simple base warning for cache3 """
+
+
 def get_expire(timeout: Time, now: Time = None) -> Time:
     """ Returns a timestamp representing the timeout time """
     if timeout is None:
