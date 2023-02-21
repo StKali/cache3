@@ -297,6 +297,30 @@ class Cache:
             cache = self._caches[tag]
             return cache.values()
 
+    def memoize(self, tag: TG = None, timeout: Time = 24 * 60 * 60) -> Any:
+        """ The cache is decorated with the return value of the function,
+        and the timeout is available. """
+
+        if callable(tag):
+            raise TypeError(
+                "Mame cannot be callable. ('@cache.memoize()' not '@cache.memoize')."
+            )
+
+        def decorator(func) -> Callable[[Callable[[Any], Any]], Any]:
+            """ Decorator created by memoize() for callable `func`."""
+
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs) -> Any:
+                """Wrapper for callable to cache arguments and return values."""
+                value: Any = self.get(func.__name__, empty, tag)
+                if value is empty:
+                    value: Any = func(*args, **kwargs)
+                    self.set(func.__name__, value, timeout, tag)
+                return value
+            return wrapper
+
+        return decorator
+
     def __iter__(self) -> Iterable[Any]:
         for cache in self._caches.values():
             for m in cache:

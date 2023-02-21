@@ -166,3 +166,17 @@ class TestGeneralCacheApi:
             assert len(items_data[0]) == 3
 
 
+    def test_memoize(self):
+
+        for cache in self.caches:
+            count = [0, ]
+            @cache.memoize()
+            def call(count):
+                count[0] += 1
+
+            call(count)
+            call(count)
+            call(count)
+            call(count)
+            call(count)
+            assert count[0] == 1

@@ -1046,7 +1046,6 @@ class DiskCache:
                     'LIMIT ? OFFSET ?',
                     (now, self.iter_size, self.iter_size * i)
                 ):
-                    print(line)
                     if line:
                         yield self.store.loads(*line[:2]), self.store.loads(*line[2:4]), line[4]
         else:
