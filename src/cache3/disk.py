@@ -481,7 +481,7 @@ class EvictManager(dict):
 
         if not issubclass(evict, EvictInterface):
             raise Cache3Error(
-                'evict msut be inherit `EvictInterface` class'
+                'evict must be inherit `EvictInterface` class'
             )
 
         if evict.name in self:

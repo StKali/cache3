@@ -5,7 +5,9 @@ import pickle
 from pathlib import Path
 
 import pytest
-from cache3.disk import SQLiteEntry, PickleStore, empty, BYTES, NUMBER, STRING, RAW, PICKLE
+from cache3.disk import (SQLiteEntry, PickleStore, empty, BYTES, NUMBER, STRING, RAW, PICKLE, EvictManager,
+    EvictInterface, LRUEvict, FIFOEvict, LFUEvict
+)
 from cache3.utils import Cache3Error, Cache3Warning
 from sqlite3 import Connection
 from threading import Thread
@@ -16,19 +18,22 @@ warns = pytest.warns
 
 class TestSQLiteEntry:
 
-    def test_instance(self):
+    def test_instance(self, tmp_path):
         
+        testdir = tmp_path / f'test-disk-{rand_string()}'
+        testdir.mkdir(exist_ok=True, parents=True)
+
         # success
-        assert SQLiteEntry('', 'test-sqliye0', None, 5)
+        assert SQLiteEntry(testdir, rand_string(), None, 5)
         
         # invalid pragmas
         with raises(TypeError, match='pragmas want dict object but get .*'):
-            SQLiteEntry('', 'test-sqlite1', None, 5, pragmas=1)
+            SQLiteEntry(testdir, rand_string(), None, 5, pragmas=1)
 
     def test_session(self, tmp_path):
-        directory = tmp_path / 'test'
-        directory.mkdir(exist_ok=True)
-        entry = SQLiteEntry(directory.as_posix(), 'sqlite-test', None, 5)
+        testdir = tmp_path / f'test-disk-{rand_string()}'
+        testdir.mkdir(exist_ok=True, parents=True)
+        entry = SQLiteEntry(testdir.as_posix(), rand_string(), None, 5)
         assert isinstance(entry.session, Connection)
         assert entry.close()
 
@@ -55,9 +60,9 @@ class TestSQLiteEntry:
         [t.join() for t in ts]
     
     def test_config(self, tmp_path):
-        directory = tmp_path / 'test'
-        directory.mkdir(exist_ok=True)
-        entry = SQLiteEntry(directory.as_posix(), 'sqlite-test', None, 5)
+        testdir = tmp_path / f'test-disk-{rand_string()}'
+        testdir.mkdir(exist_ok=True, parents=True)
+        entry = SQLiteEntry(testdir.as_posix(), rand_string(), None, 5)
         assert entry.config('name') is None
         assert entry.config('name',  'value')
         assert entry.config('name') == 'value'
@@ -68,16 +73,16 @@ class TestPickleStore:
     def create_store(self, path, name=pickle.HIGHEST_PROTOCOL, raw_max_size=10, charset='utf-8'):
         return PickleStore(path, name, raw_max_size=raw_max_size, charset=charset)
 
-    def test_dumps_loads(self):
-
-        test_dir = Path('dist_test')
-        test_dir.mkdir(exist_ok=True)
-        store = self.create_store(test_dir, raw_max_size=10)
+    def test_dumps_loads(self, tmp_path):
+        testdir = tmp_path / f'test-disk-{rand_string()}'
+        testdir.mkdir(exist_ok=True, parents=True)
+        
+        store = self.create_store(testdir, raw_max_size=10)
 
         # string
-        min_string = rand_string(4, 8)
-        v, f = store.dumps(min_string)
-        assert v == min_string
+        small_string = rand_string(4, 8)
+        v, f = store.dumps(small_string)
+        assert v == small_string
         assert f == RAW
         assert store.loads(v, f) == v
 
@@ -87,18 +92,24 @@ class TestPickleStore:
         assert f == STRING
         assert store.loads(v, f) == big_string
 
-        # int /float
+        # int
         v, f = store.dumps(10)
         assert f == NUMBER 
         assert v == 10
         assert store.loads(v, f) == 10
-
+        
+        # float
         v, f = store.dumps(11.)
         assert f == NUMBER 
         assert v == 11.
         assert store.loads(v, f) == 11.
 
         # bytes
+        small_bytes = rand_string(4, 10).encode('UTF-8')
+        v, f = store.dumps(small_bytes)
+        assert f == RAW
+        assert store.loads(v, f) == small_bytes
+
         big_bytes = rand_string(1000, 1100).encode('UTF-8')
         v, f = store.dumps(big_bytes)
         assert f == BYTES 
@@ -127,3 +138,89 @@ class TestPickleStore:
         
         # test delete
         assert store.delete(v) == False
+
+
+
+class SuccessEvict(EvictInterface):
+    name = 'success-evict-policy'
+
+
+class TypeErrorEvict:
+    name = 'type-error-evict-policy'
+
+
+class TestManagerEvict:
+
+    def test_register(self):
+        """"""
+
+        manager = EvictManager()
+        assert len(manager) == 0
+        
+        manager.register(SuccessEvict)
+        assert len(manager) == 1
+        assert SuccessEvict.name in manager
+
+        with raises(Cache3Error, match='evict must be inherit `EvictInterface` class'):
+            manager.register(TypeErrorEvict)
+        
+        with raises(Cache3Error, match=f'has been registered evict named {SuccessEvict.name!r}'):
+            manager.register(SuccessEvict)
+
+    def test_getitem(self):
+        
+        manager = EvictManager()
+        assert len(manager) == 0
+        manager.register(SuccessEvict)
+        assert manager[SuccessEvict.name] == SuccessEvict
+
+        not_exited_evict: str = 'not-exist-evict'
+        with raises(Cache3Error, match=f'no register evict policy named {not_exited_evict!r}'):
+            manager[not_exited_evict]
+
+    
+class TestLRUEvict:
+
+    evict_policy = 'lru'
+    max_size = 10
+
+    def setup_class(self):
+        self.cache = DiskCache('lru-evict-cache', evict_policy=self.evict_policy, max_size=self.max_size)
+
+    def test_evict(self):
+
+        
+        self.cache.evict()
+
+    def test_apply(self):
+        """"""
+    
+    def test_unapply(self):
+        """"""
+
+
+class TestLFUEvict:
+    def test_evict(self):
+        """"""
+
+    def test_apply(self):
+        """"""
+    
+    def test_unapply(self):
+        """"""
+
+
+class TestFIFOEvict:
+
+    def test_evict(self):
+        """"""
+
+    def test_apply(self):
+        """"""
+    
+    def test_unapply(self):
+        """"""
+
+
+class TestDiskCache:
+    """"""

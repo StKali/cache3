@@ -5,6 +5,7 @@
 import pytest
 from cache3.utils import empty
 from cache3 import MiniCache, Cache, DiskCache
+from shutil import rmtree
 from utils import rand_strings, rand_string
 
 params = pytest.mark.parametrize
@@ -34,13 +35,21 @@ key_types_cases = [
     ('false', 'bool-false-mess-2'),
 ]
 
+
 class TestGeneralCacheApi:
 
     def setup_class(self):
+        self.mem_cache = Cache(f'mem-{rand_string()}')
+        self.disk_cache = DiskCache(f'disk-{rand_string()}')
+
         self.caches = [
-            Cache('memory_cache'),
-            DiskCache('disk_cache'),
+            self.mem_cache,
+            self.disk_cache,
         ]
+    
+    def teardown_class(self):
+        self.disk_cache.sqlite.close()
+        rmtree(self.disk_cache.directory)
 
     def setup_method(self):
         assert all((cache.clear() for cache in self.caches))

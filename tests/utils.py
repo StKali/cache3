@@ -3,12 +3,15 @@
 # date: 2023/2/15
 
 import random
-from string import printable
+from string import ascii_letters, digits
 from typing import Iterable
 
-def rand_string(_min: int, _max: int) -> str:
+chars = ascii_letters + digits
+
+
+def rand_string(_min: int = 4, _max: int = 10) -> str:
     return ''.join(
-        random.choice(printable) for _ in 
+        random.choice(chars) for _ in 
         range(random.randint(_min, _max))
     )
 
