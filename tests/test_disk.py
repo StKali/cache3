@@ -3,11 +3,12 @@
 # date: 2023/2/15
 import pickle
 from pathlib import Path
+from shutil import rmtree
 
 import pytest
 from cache3.disk import (SQLiteEntry, PickleStore, empty, BYTES, NUMBER, STRING, RAW, PICKLE, EvictManager,
-    EvictInterface, LRUEvict, FIFOEvict, LFUEvict
-)
+                         EvictInterface, LRUEvict, FIFOEvict, LFUEvict, DiskCache
+                         )
 from cache3.utils import Cache3Error, Cache3Warning
 from sqlite3 import Connection
 from threading import Thread
@@ -15,25 +16,36 @@ from utils import rand_string, rand_strings
 
 raises = pytest.raises
 warns = pytest.warns
+test_directory = Path('test_directory')
+
+
+def setup_module():
+    if test_directory.exists():
+        rmtree(test_directory.as_posix())
+    test_directory.mkdir(exist_ok=True, parents=True)
+
+
+def teardown_module():
+    rmtree(test_directory.as_posix())
+
 
 class TestSQLiteEntry:
 
-    def test_instance(self, tmp_path):
-        
-        testdir = tmp_path / f'test-disk-{rand_string()}'
-        testdir.mkdir(exist_ok=True, parents=True)
+    def test_instance(self):
+        test_dir = test_directory / f'test-disk-{rand_string()}'
+        test_dir.mkdir(exist_ok=True, parents=True)
 
         # success
-        assert SQLiteEntry(testdir, rand_string(), None, 5)
+        assert SQLiteEntry(test_dir.as_posix(), rand_string(), None, 5)
         
         # invalid pragmas
         with raises(TypeError, match='pragmas want dict object but get .*'):
-            SQLiteEntry(testdir, rand_string(), None, 5, pragmas=1)
+            SQLiteEntry(test_dir.as_posix(), rand_string(), None, 5, pragmas=1)
 
-    def test_session(self, tmp_path):
-        testdir = tmp_path / f'test-disk-{rand_string()}'
-        testdir.mkdir(exist_ok=True, parents=True)
-        entry = SQLiteEntry(testdir.as_posix(), rand_string(), None, 5)
+    def test_session(self):
+        test_dir = test_directory / f'test-disk-{rand_string()}'
+        test_dir.mkdir(exist_ok=True, parents=True)
+        entry = SQLiteEntry(test_dir.as_posix(), rand_string(), None, 5)
         assert isinstance(entry.session, Connection)
         assert entry.close()
 
@@ -59,10 +71,10 @@ class TestSQLiteEntry:
         [t.start() for t in ts]
         [t.join() for t in ts]
     
-    def test_config(self, tmp_path):
-        testdir = tmp_path / f'test-disk-{rand_string()}'
-        testdir.mkdir(exist_ok=True, parents=True)
-        entry = SQLiteEntry(testdir.as_posix(), rand_string(), None, 5)
+    def test_config(self):
+        test_dir = test_directory / f'test-disk-{rand_string()}'
+        test_dir.mkdir(exist_ok=True, parents=True)
+        entry = SQLiteEntry(test_dir.as_posix(), rand_string(), None, 5)
         assert entry.config('name') is None
         assert entry.config('name',  'value')
         assert entry.config('name') == 'value'
@@ -73,11 +85,10 @@ class TestPickleStore:
     def create_store(self, path, name=pickle.HIGHEST_PROTOCOL, raw_max_size=10, charset='utf-8'):
         return PickleStore(path, name, raw_max_size=raw_max_size, charset=charset)
 
-    def test_dumps_loads(self, tmp_path):
-        testdir = tmp_path / f'test-disk-{rand_string()}'
-        testdir.mkdir(exist_ok=True, parents=True)
-        
-        store = self.create_store(testdir, raw_max_size=10)
+    def test_dumps_loads(self):
+        test_dir = test_directory / f'test-disk-{rand_string()}'
+        test_dir.mkdir(exist_ok=True, parents=True)
+        store = self.create_store(test_dir, raw_max_size=10)
 
         # string
         small_string = rand_string(4, 8)
@@ -140,7 +151,6 @@ class TestPickleStore:
         assert store.delete(v) == False
 
 
-
 class SuccessEvict(EvictInterface):
     name = 'success-evict-policy'
 
@@ -152,7 +162,6 @@ class TypeErrorEvict:
 class TestManagerEvict:
 
     def test_register(self):
-        """"""
 
         manager = EvictManager()
         assert len(manager) == 0
@@ -185,12 +194,16 @@ class TestLRUEvict:
     max_size = 10
 
     def setup_class(self):
-        self.cache = DiskCache('lru-evict-cache', evict_policy=self.evict_policy, max_size=self.max_size)
+
+        self.cache = DiskCache(
+            (test_directory / 'lru-evict-cache').as_posix(),
+            evict_policy=self.evict_policy,
+            max_size=self.max_size
+        )
 
     def test_evict(self):
-
-        
-        self.cache.evict()
+        with self.cache.sqlite.transact() as sql:
+            self.cache.evict.evict(sql, 10)
 
     def test_apply(self):
         """"""
@@ -200,6 +213,7 @@ class TestLRUEvict:
 
 
 class TestLFUEvict:
+
     def test_evict(self):
         """"""
 

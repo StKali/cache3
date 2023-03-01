@@ -75,7 +75,7 @@ def new_method_proxy(func) -> Callable:
     def inner(self, *args):
         if self._wrapped is empty:
             self._setup()
-        return func(self._wrapped, args)
+        return func(self._wrapped, *args)
     return inner
 
 
@@ -109,12 +109,7 @@ class LazyObject:
 
     def _setup(self) -> None:
         self._wrapped = self._setup_factory()
-    
-    def __reduce__(self) -> Union[str, Tuple[Any, ...]]:
-        if self._wrapped is empty:
-            self._setup()
-        return (unpickle_lazyobject, (self._wrapped))
-    
+
     __bytes__ = new_method_proxy(bytes)
     __str__ = new_method_proxy(str)
     __bool__ = new_method_proxy(bool)
@@ -134,6 +129,7 @@ class LazyObject:
     __iter__ = new_method_proxy(iter)
     __len__ = new_method_proxy(len)
     __contains__ = new_method_proxy(operator.contains)
+    __add__ = new_method_proxy(operator.add)
 
     def __repr__(self) -> str:
         if self._wrapped is empty:
@@ -141,10 +137,6 @@ class LazyObject:
         else:
             repr_attr = self._wrapped
         return f'{type(self).__name__}: {repr_attr!r}'
-
-
-def unpickle_lazyobject(wrapped) -> Any:
-    return wrapped
 
 
 def lazy(factory: Callable) -> Callable:
