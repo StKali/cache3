@@ -1069,7 +1069,7 @@ class DiskCache:
         return length
 
     def __repr__(self) -> str:
-        return f'<{type(self).__name__}: {self.location}>'
+        return f'<DiskCache: {self.location}>'
 
     __delete__ = delete
     __getitem__ = get

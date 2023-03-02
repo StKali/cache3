@@ -72,11 +72,14 @@ class TestGeneralCacheApi:
             assert key in cache
             assert cache[key] == value
 
-    # def test_set_get_tag(self):
-    #     for cache in self.caches:
-    #         cache.set('name', 'value', tag='1')
-    #         assert cache.get('name', empty) == empty
-    #         assert cache.get('name', tag='1') == 'value'
+    def test_get_many(self):
+        test_set = set(rand_strings(10))
+        for cache in self.caches:
+            for key in test_set:
+                cache[key] = key[::-1]
+            
+            for k, v in cache.get_many(test_set).items():
+                assert k == v[::-1]
 
     def test_clear(self):
         for cache in self.caches:
@@ -105,20 +108,19 @@ class TestGeneralCacheApi:
             with raises(TypeError, match='unsupported operand type'):
                 cache.incr('not-number') 
 
-    # @params('key, value, tag', [
-    #     ('name', 'value', None),
-    #     (empty, 'empty', None),
-    #     (1111, 1111, None),
-    #     (1111, 1111, 'tag-1'),
-    #     ('empty', empty, 'tag-1'),
-    #     ('empty', 'empty', 'tag-2'),
-    # ])
-    # def test_has_key(self, key, value, tag):
-    #     for cache in self.caches:
-    #         cache.set(key, value, tag=tag)
-    #         assert cache.has_key(key, tag=tag)
-    #         cache.delete(key, tag=tag)
-    #         assert not cache.has_key(key, tag=tag)
+    @params('key, value', [
+        ('name', 'value'),
+        (empty, 'empty'),
+        (1111, 1111),
+        ('empty', empty),
+        ('empty', 'empty'),
+    ])
+    def test_has_key(self, key, value):
+        for cache in self.caches:
+            cache.set(key, value)
+            assert cache.has_key(key)
+            cache.delete(key)
+            assert not cache.has_key(key)
 
     def test_touch(self):
         for cache in self.caches:
@@ -156,10 +158,7 @@ class TestGeneralCacheApi:
             for key in keys:
                 cache.set(key, rand_string(4, 20))
             assert len(cache) == count
-            assert list(cache.keys()).sort() == keys.sort()
-
-        # assert list(cache.keys(tag='not-exited-tag')) == []
-        # assert list(cache.keys(tag=None)) != []
+            assert list(cache).sort() == keys.sort()
 
     def test_values(self):
         count = 104
@@ -170,26 +169,22 @@ class TestGeneralCacheApi:
             assert len(cache) == count
             assert list(cache.values()).sort() == values.sort()
 
-        # assert list(cache.values(tag='not-exited-tag')) == []
-        # assert list(cache.values(tag=None)) != []
-    
-    # def test_items(self):
-    #     count = 104
-    #     keys = list(rand_strings(count, 4, 20))
-    #     values = list(rand_strings(count, 4, 20))
-    #     for cache in self.caches:
-    #         for k, v in zip(keys, values):
-    #             cache.set(k, v)
-    #         items_data = list(cache.items())
-    #         assert len(items_data) == count 
-    #         assert len(items_data[0]) == 2
+    def test_items(self):
+        count = 104
+        keys = list(rand_strings(count, 4, 20))
+        values = list(rand_strings(count, 4, 20))
+        for cache in self.caches:
+            for k, v in zip(keys, values):
+                cache.set(k, v)
+            items_data = list(cache.items())
+            assert len(items_data) == count 
 
     def test_memoize(self):
 
         import time
         for cache in self.caches:
             count = 1    
-            @cache.memoize(1)
+            @cache.memoize(0.1)
             def cal():
                 nonlocal count
                 count += 1
@@ -198,5 +193,5 @@ class TestGeneralCacheApi:
             assert cal() == 2
             assert cal() == 2
             assert cal() == 2
-            time.sleep(1)
+            time.sleep(0.11)
             assert cal() == 3

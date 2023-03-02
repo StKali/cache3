@@ -7,7 +7,7 @@ from collections import OrderedDict
 from contextlib import AbstractContextManager
 from threading import Lock
 from time import time as current
-from typing import Dict, Any, Iterable, Type, Optional, NoReturn, Tuple, Union, Callable
+from typing import Dict, Any, Iterable, Type, Optional, NoReturn, Tuple, Union, Callable, List
 
 from .utils import Time, TG, Number, get_expire, empty
 
@@ -63,6 +63,15 @@ class MiniCache:
                 self._del(key)
                 return default
             return self._cache.get(key, default)
+
+    def get_many(self, keys: List[Any]) -> dict:
+        res: dict = {} 
+        with self._lock:
+            for key in keys:
+                if self._has_expired(key):
+                    self._del(key)
+            res[key] = self._cache[key]
+        return res
 
     def ex_set(self, key: Any, value: Any, timeout: Time = None) -> bool:
 
@@ -163,7 +172,7 @@ class MiniCache:
         }
 
     def keys(self) -> Iterable[Any]:
-        return self._cache.keys()
+        return iter(self._cache)
 
     def values(self) -> Iterable[Any]:
         return self._cache.values()
@@ -186,17 +195,18 @@ class MiniCache:
             del self._expires[key]
         except KeyError:
             ...
-
-    def __iter__(self) -> Iterable[Tuple[Any, ...]]:
-        return iter(self._cache)
     
     def __len__(self) -> int:
         return len(self._cache)
     
+    def __repr__(self) -> str:
+        return f'<MiniCache length:{len(self)}>'
+
+    __iter__ = keys
     __delitem__ = delete
     __getitem__ = get
     __setitem__ = set
-    __contain__ = has_key
+    __contains__ = has_key
 
 
 class _Caches(dict):
@@ -226,6 +236,10 @@ class Cache:
     def get(self, key: Any, default: Any = None, tag: TG = None) -> Any:
         cache = self._caches[tag]
         return cache.get(key, default)
+
+    def get_many(self, keys: List[Any], tag: TG = None) -> dict:
+        cache = self._caches[tag]
+        return cache.get_many(keys)
 
     def ex_set(self, key: Any, value: Any, timeout: Time = None, tag: TG = None) -> bool:
         cache = self._caches[tag]
@@ -320,19 +334,14 @@ class Cache:
 
         return decorator
 
-    def __iter__(self) -> Iterable[Any]:
-        for cache in self._caches.values():
-            for m in cache:
-                yield m
-
     def __len__(self) -> int:
         return sum(len(cache) for cache in self._caches.values())
     
     def __repr__(self) -> str:
-        return f'<Cache: buckets({len(self._caches)})>'
+        return f'<Cache buckets:{len(self._caches)}>'
 
+    __iter__ = keys
     __setitem__ = set
     __getitem__ = get
     __delitem__ = delete
     __contains__ = has_key
-
