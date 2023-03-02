@@ -242,26 +242,42 @@ class TestFIFOEvict:
 class TestDiskCache:
     
     def setup_class(self):
-        directory: Path = Path('test_directory')
-        if not directory.exists():
-            directory.mkdir(exist_ok=True, parents=True)
-        self.cache = DiskCache(directory)
+        path: Path = (test_directory / 'test-disk')
+        if not path.exists():
+            path.mkdir(parents=True, exist_ok=True)
+
+        self.cache = DiskCache(path.as_posix())
 
     def setup_method(self):
         self.cache.clear()
+
+    def teardown_method(self):
+        self.cache.sqlite.close()
 
     def test_str(self):
         assert str(self.cache).startswith('<DiskCache: ')
 
     def test_inspect(self):
-
         name, value, tag = 'name', 'value', 'tag'
         # not existed key
+
         assert self.cache.inspect(name) is None
-
-        # existed key
-        assert self.cache.set(name, value, tag=tag)
-        
-
         self.cache.set(name, value, tag=tag)
+        assert self.cache.has_key(name, tag=tag)
+        ins: dict = self.cache.inspect(name, tag=tag)
+        assert isinstance(ins, dict)
+        assert ins['key'] == name
+        assert ins['value'] == value
+        assert ins['tag'] == tag
+        assert ins['kf'] == RAW
+        assert ins['sk'] == name
+        assert ins['kf'] == RAW
+        assert ins['sv'] == value
+        assert ins['expire'] is None
+        assert ins['access_count'] == 0
+        timeout = 10
+        assert self.cache.touch(name, tag=tag, timeout=timeout)
+        ins = self.cache.inspect(name, tag=tag)
+        assert round(ins['expire'] - ins['store']) == timeout
+
 

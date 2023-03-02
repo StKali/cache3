@@ -672,16 +672,14 @@ class DiskCache:
                 raise TypeError(
                     f'unsupported operand type(s) for +/-: {type(value)!r} and {type(delta)!r}'
                 )
-            for i in range(3):
-                rowcount: int = sql(
-                    'UPDATE `cache` SET `value`= `value` + ? '
-                    'WHERE `key` = ? '
-                    'AND `tag` IS ?',
-                    (delta, sk, tag)
-                ).rowcount
-                if rowcount == 1:
-                    break
-            else:
+
+            ok: bool = sql(
+                'UPDATE `cache` SET `value`= `value` + ? '
+                'WHERE `key` = ? '
+                'AND `tag` IS ?',
+                (delta, sk, tag)
+            ).rowcount == 1
+            if not ok:
                 raise Cache3Error(
                     f'The increment operation to the {key!r} failed'
                 )
@@ -777,14 +775,14 @@ class DiskCache:
 
         sk, _ = self.store.dumps(key)
         with self.sqlite.transact() as sql:
-            success: bool = sql(
+            ok: bool = sql(
                 'DELETE FROM `cache` '
                 'WHERE `key` = ? AND `tag` IS ? ',
                 (sk, tag)
             ).rowcount == 1
-            if success:
+            if ok:
                 self._sub_count(sql)
-        return success
+        return ok
 
     def inspect(self, key: Any, tag: TG = None) -> Optional[Dict[str, Any]]:
         """ Get the details of the key value, including any information,
@@ -825,15 +823,13 @@ class DiskCache:
             return default
         rowid, sv, vf = row
         value = self.store.loads(sv, vf)
-        for i in range(3):
-            success: bool = sql(
-                'DELETE FROM `cache` '
-                'WHERE `rowid` == ? ',
-                (rowid, )
-            ).rowcount == 1
-            if success:
-                _ = self._sub_count(sql)
-                break
+        success: bool = sql(
+            'DELETE FROM `cache` '
+            'WHERE `rowid` == ? ',
+            (rowid, )
+        ).rowcount == 1
+        if success:
+            _ = self._sub_count(sql)
         else:
             raise Cache3Error(
                 f'pop error, delete key: {key!r} from cache failed'
