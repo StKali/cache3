@@ -53,7 +53,7 @@ class TestSQLiteEntry:
             _ = sqlite.session.execute(
                 'CREATE TABLE IF NOT EXISTS `test`('
                 '`key` BLOB,'
-                '`value`, BLOB)'
+                '`value` BLOB)'
             )
 
             with sqlite.transact() as sql:
@@ -200,6 +200,9 @@ class TestLRUEvict:
             evict_policy=self.evict_policy,
             max_size=self.max_size
         )
+
+    def teardown_class(self):
+        self.cache.sqlite.close()
 
     def test_evict(self):
         with self.cache.sqlite.transact() as sql:

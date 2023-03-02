@@ -86,11 +86,11 @@ class MiniCache:
         """ The cache is decorated with the return value of the function,
         and the timeout is available. """
 
-        def decorator(func) -> Callable[[Callable[[Any], Any]], Any]:
+        def decorator(func: Optional[Callable] = None) -> Callable[[Callable[[Any], Any]], Any]:
             """ Decorator created by memoize() for callable `func`."""
-            if callable(func):
+            if not callable(func):
                 raise TypeError(
-                    "Name cannot be callable. ('@cache.memoize()' not '@cache.memoize')."
+                    'The `memoize` decorator should be called with a `timeout` parameter.'
                 )
             @functools.wraps(func)
             def wrapper(*args, **kwargs) -> Any:
@@ -154,9 +154,7 @@ class MiniCache:
         
         if key not in self._cache:
             return None
-        
-        expire = self._expires[key]
-
+        expire: Time = self._expires.get(key, -1)
         return {
             'key': key,
             'value': self._cache[key],
@@ -266,9 +264,10 @@ class Cache:
 
     def inspect(self, key: Any, tag: TG = None) -> Optional[Dict]:
         cache = self._caches[tag]
-        result = cache.inspect(key)
-        result['tag'] = tag
-        return result
+        ins = cache.inspect(key)
+        if ins is not None:
+            ins['tag'] = tag
+        return ins
     
     def items(self, tag: TG = empty) -> Iterable[Tuple[Any, ...]]:
         if tag is empty:
@@ -297,17 +296,17 @@ class Cache:
             cache = self._caches[tag]
             return cache.values()
 
-    def memoize(self, tag: TG = None, timeout: Time = 24 * 60 * 60) -> Any:
+    def memoize(self, timeout: Time = 24 * 60 * 60, tag: TG = None) -> Any:
         """ The cache is decorated with the return value of the function,
         and the timeout is available. """
 
-        if callable(tag):
-            raise TypeError(
-                "Mame cannot be callable. ('@cache.memoize()' not '@cache.memoize')."
-            )
-
-        def decorator(func) -> Callable[[Callable[[Any], Any]], Any]:
+        def decorator(func: Optional[Callable] = None) -> Callable[[Callable[[Any], Any]], Any]:
             """ Decorator created by memoize() for callable `func`."""
+            
+            if not callable(func):
+                raise TypeError(
+                    'The `memoize` decorator should be called with a `timeout` parameter.'
+                )
 
             @functools.wraps(func)
             def wrapper(*args, **kwargs) -> Any:
@@ -331,3 +330,9 @@ class Cache:
     
     def __repr__(self) -> str:
         return f'<Cache: buckets({len(self._caches)})>'
+
+    __setitem__ = set
+    __getitem__ = get
+    __delitem__ = delete
+    __contains__ = has_key
+

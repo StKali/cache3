@@ -883,18 +883,16 @@ class DiskCache:
                 (new_expire, sk, tag, now)
             ).rowcount == 1
 
-    def memoize(self, tag: TG = None, timeout: Time = 24 * 60 * 60) -> Any:
+    def memoize(self, timeout: Time = 24 * 60 * 60, tag: TG = None) -> Any:
         """ The cache is decorated with the return value of the function,
         and the timeout is available. """
 
-        if callable(tag):
-            raise TypeError(
-                "Mame cannot be callable. ('@cache.memoize()' not '@cache.memoize')."
-            )
-
-        def decorator(func) -> Callable[[Callable[[Any], Any]], Any]:
+        def decorator(func: Optional[Callable] = None) -> Callable[[Callable[[Any], Any]], Any]:
             """ Decorator created by memoize() for callable `func`."""
-
+            if not callable(func):
+                raise TypeError(
+                    'The `memoize` decorator should be called with a `timeout` parameter.'
+                )
             @functools.wraps(func)
             def wrapper(*args, **kwargs) -> Any:
                 """Wrapper for callable to cache arguments and return values."""
@@ -1077,5 +1075,6 @@ class DiskCache:
     __getitem__ = get
     __setitem__ = set
     __iter__ = keys
+    __contains__ = has_key
 
 LazyDiskCache = lazy(DiskCache)
