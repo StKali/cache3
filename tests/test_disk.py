@@ -205,8 +205,8 @@ class TestLRUEvict:
         self.cache.sqlite.close()
 
     def test_evict(self):
-        with self.cache.sqlite.transact() as sql:
-            self.cache.evict.evict(sql, 10)
+        for key in rand_strings(1000):
+            self.cache[key] = key
 
     def test_apply(self):
         """"""
@@ -246,7 +246,7 @@ class TestDiskCache:
         if not path.exists():
             path.mkdir(parents=True, exist_ok=True)
 
-        self.cache = DiskCache(path.as_posix())
+        self.cache = DiskCache(path.as_posix(), max_size=10)
 
     def setup_method(self):
         self.cache.clear()
@@ -280,4 +280,9 @@ class TestDiskCache:
         ins = self.cache.inspect(name, tag=tag)
         assert round(ins['expire'] - ins['store']) == timeout
 
+    def test_try_evict(self):
+        for evict in ['lru', 'lfu', 'fifo']:
+            self.cache.config_evict(evict)
+            for key in rand_strings(1000):
+                self.cache[key] = key
 
