@@ -240,4 +240,7 @@ class TestFIFOEvict:
 
 
 class TestDiskCache:
-    """"""
+    
+    def test_str(self, tmp_path):
+
+        assert str(DiskCache(tmp_path)).startswith('<DiskCache: ')

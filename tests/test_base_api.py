@@ -73,11 +73,11 @@ class TestGeneralCacheApi:
             assert cache[key] == value
 
     def test_get_many(self):
-        test_set = set(rand_strings(10))
+        test_set = list(rand_strings(10))
         for cache in self.caches:
             for key in test_set:
                 cache[key] = key[::-1]
-            
+            assert cache.delete(test_set[0])   
             for k, v in cache.get_many(test_set).items():
                 assert k == v[::-1]
 

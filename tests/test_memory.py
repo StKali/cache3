@@ -81,9 +81,21 @@ class MemoizeMixin:
 
 
 class TestMiniCache(MemoizeMixin):
-    """"""
+    
+    CacheClass = MiniCache
 
+    def test_str(self):
+        assert str(self.cache) == '<MiniCache length:0>'
+        self.cache['name'] = None
+        assert str(self.cache) == '<MiniCache length:1>'
 
 class TestCache(MemoizeMixin):
     
     CacheClass = Cache
+
+    def test_str(self):
+        assert str(self.cache) == '<Cache buckets:0>'
+        self.cache['name'] = None
+        assert str(self.cache) == '<Cache buckets:1>'
+
+    

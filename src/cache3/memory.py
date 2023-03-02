@@ -81,9 +81,10 @@ class MiniCache:
                 return True
             return False
     
-    def delete(self, key: Any) -> None:
+    def delete(self, key: Any) -> bool:
         with self._lock:
             self._del(key)
+        return True
     
     def clear(self) -> bool:
         with self._lock:
@@ -227,7 +228,10 @@ class Cache:
     
     def __init__(self, name: str, *args, **kwargs) -> None:
         self.name: str = name
-        self._caches = _Caches(name, *args, **kwargs)
+        def _factory() -> _Caches:
+            return _Caches(name, *args, **kwargs)
+        self._factory = _factory
+        self._caches = _factory()
 
     def set(self, key: Any, value: Any, timeout: Time = None, tag: TG = None) -> bool:
         cache = self._caches[tag]
@@ -254,8 +258,9 @@ class Cache:
         return cache.delete(key)
 
     def clear(self) -> bool:
-        return all(cache.clear() for cache in self._caches.values())
-
+        self._caches = self._factory()
+        return True
+    
     def incr(self, key: Any, delta: Number = 1, tag: TG = None) -> Number:
         cache = self._caches[tag]
         return cache.incr(key, delta)
