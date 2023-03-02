@@ -241,6 +241,27 @@ class TestFIFOEvict:
 
 class TestDiskCache:
     
-    def test_str(self, tmp_path):
+    def setup_class(self):
+        directory: Path = Path('test_directory')
+        if not directory.exists():
+            directory.mkdir(exist_ok=True, parents=True)
+        self.cache = DiskCache(directory)
 
-        assert str(DiskCache(tmp_path)).startswith('<DiskCache: ')
+    def setup_method(self):
+        self.cache.clear()
+
+    def test_str(self):
+        assert str(self.cache).startswith('<DiskCache: ')
+
+    def test_inspect(self):
+
+        name, value, tag = 'name', 'value', 'tag'
+        # not existed key
+        assert self.cache.inspect(name) is None
+
+        # existed key
+        assert self.cache.set(name, value, tag=tag)
+        
+
+        self.cache.set(name, value, tag=tag)
+

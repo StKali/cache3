@@ -21,31 +21,6 @@ class MemoizeMixin:
     def setup_method(self):
         self.cache.clear()
 
-    def test_success_memoize(self):
-
-        count = 1
-        @self.cache.memoize(1)
-        def cal():
-            nonlocal count
-            count += 1
-            return count
-
-        assert cal() == 2
-        assert cal() == 2
-        assert cal() == 2
-        time.sleep(1)
-        assert cal() == 3
-    
-    def test_failed_memoize(self):
-
-        with raises(TypeError, match='The `memoize` decorator should be called with a `timeout` parameter.'):
-
-            @self.cache.memoize
-            def error():
-                ...
-            
-            error()
-
     def test_inspect(self):
         key, value = 'name', 'value'
         # not existed key

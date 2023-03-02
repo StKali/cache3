@@ -584,12 +584,11 @@ class DiskCache:
                     return True
             # key not found in cache
             else:
-                if self._create_row(sql, sk, kf, sv, vf, timeout, tag):
+                ok: bool = self._create_row(sql, sk, kf, sv, vf, timeout, tag)
+                if ok:
                     self._add_count(sql)
                     self.try_evict(sql)
-                else:
-                    return False
-        return True
+                return ok
 
     def get(self, key: Any, default: Any = None, tag: TG = None) -> Any:
         sk, _ = self.store.dumps(key)
@@ -924,32 +923,11 @@ class DiskCache:
                 return self._update_row(sql, rowid, sv, vf, timeout, tag)
             else:
                 sv, vf = self.store.dumps(value)
-                if self._create_row(sql, sk, kf, sv, vf, timeout, tag):
+                ok: bool = self._create_row(sql, sk, kf, sv, vf, timeout, tag)
+                if ok:
                     self._add_count(sql)
                     self.try_evict(sql)
-                    return True
-                else:
-                    return False
-
-    def iter(self, tag: TG = None) -> Iterable[Tuple[Any, Any]]:
-
-        count, index = self.iter_size, 0
-        now: Time = current()
-        sql = self.sqlite.session.execute
-        while count >= self.iter_size:
-            count: int = 0
-            for line in sql(
-                'SELECT `key`, `value` '
-                'FROM `cache` '
-                'WHERE `tag` IS ? '
-                'AND (`expire` IS NULL OR `expire` > ?) '
-                'ORDER BY `store` '
-                'LIMIT ? OFFSET ?',
-                (tag, now, self.iter_size, index * self.iter_size)
-            ):
-                count += 1
-                yield line
-            index += 1
+                return ok
 
     def try_evict(self, sql) -> None:
         now: Time = current()

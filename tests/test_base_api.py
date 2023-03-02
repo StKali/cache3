@@ -93,6 +93,9 @@ class TestGeneralCacheApi:
         for cache in self.caches:
             assert cache.ex_set('name', None)
             assert not cache.ex_set('name', None)
+            assert cache.touch('name', timeout=-1)
+            assert cache.ex_set('name', 'value')
+            assert cache.get('name') == 'value'
 
     def test_incr_decr(self):
         count = 'count'
@@ -195,3 +198,12 @@ class TestGeneralCacheApi:
             assert cal() == 2
             time.sleep(0.11)
             assert cal() == 3
+
+    def test_failed_memoize(self):
+
+        for cache in self.caches:
+            with raises(TypeError, match='The `memoize` decorator should be called with a `timeout` parameter.'):
+                @cache.memoize
+                def error():
+                    ...                
+                error()

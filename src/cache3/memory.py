@@ -138,12 +138,12 @@ class MiniCache:
                 return False
             return True
 
-    def touch(self, key: Any, ttl: Time = None) -> bool:
+    def touch(self, key: Any, timeout: Time = None) -> bool:
         with self._lock:
             now = current()
             if self._has_expired(key, now):
                 return False 
-            self._expires[key] = get_expire(ttl, now)
+            self._expires[key] = get_expire(timeout, now)
         return True
 
     def pop(self, key: Any, default: Any = empty) -> Any:
