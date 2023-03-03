@@ -187,57 +187,6 @@ class TestManagerEvict:
         with raises(Cache3Error, match=f'no register evict policy named {not_exited_evict!r}'):
             manager[not_exited_evict]
 
-    
-class TestLRUEvict:
-
-    evict_policy = 'lru'
-    max_size = 10
-
-    def setup_class(self):
-
-        self.cache = DiskCache(
-            (test_directory / 'lru-evict-cache').as_posix(),
-            evict_policy=self.evict_policy,
-            max_size=self.max_size
-        )
-
-    def teardown_class(self):
-        self.cache.sqlite.close()
-
-    def test_evict(self):
-        for key in rand_strings(1000):
-            self.cache[key] = key
-
-    def test_apply(self):
-        """"""
-    
-    def test_unapply(self):
-        """"""
-
-
-class TestLFUEvict:
-
-    def test_evict(self):
-        """"""
-
-    def test_apply(self):
-        """"""
-    
-    def test_unapply(self):
-        """"""
-
-
-class TestFIFOEvict:
-
-    def test_evict(self):
-        """"""
-
-    def test_apply(self):
-        """"""
-    
-    def test_unapply(self):
-        """"""
-
 
 class TestDiskCache:
     
@@ -285,4 +234,23 @@ class TestDiskCache:
             self.cache.config_evict(evict)
             for key in rand_strings(1000):
                 self.cache[key] = key
+
+    def test_config_evict(self):
+        self.cache.config_evict('fifo')
+        self.cache.config_evict('lru')
+        self.cache.config_evict('lfu')
+        self.cache.config_evict('fifo')
+        self.cache.config_evict('lru')
+
+    def test_evict_fifo(self):
+        self.cache.config_evict('fifo')
+        self.cache.max_size = 10
+
+        keys = list(rand_strings(16))
+        for key in keys:
+            self.cache[key] = key[::-1]
+        
+        assert len(self.cache) == 6
+        for key in keys[-6:]:
+            assert self.cache[key] == key[::-1]
 

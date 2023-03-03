@@ -543,7 +543,8 @@ class DiskCache:
             timeout=timeout,
             pragmas=pragmas or _default_pragmas,
         )
-        self.evict: EvictInterface = self.config_evict(evict_policy)
+        self._evict: Optinal[EvictInterface] = None
+        self.config_evict(evict_policy)
 
         # pickle storage
         self.store = PickleStore(
@@ -553,17 +554,17 @@ class DiskCache:
             charset=charset or _default_charset,
         )
 
-    def config_evict(self, evict_policy: str) -> EvictInterface:
+    def config_evict(self, evict_policy: str) -> bool:
 
         pre_evict_policy: str = self.sqlite.config('evict')
         sql: QY = self.sqlite.session.execute
-        evict: EvictInterface = evict_manager[evict_policy]()
+        self._evict = evict_manager[evict_policy]()
         if pre_evict_policy != evict_policy:
             pre_evict: EvictInterface = evict_manager[pre_evict_policy]()
             pre_evict.unapply(sql)
-            evict.apply(sql)
+            self._evict.apply(sql)
             self.sqlite.config('evict', evict_policy)
-        return evict
+        return True
 
     def set(self, key: Any, value: Any, timeout: Time = None, tag: TG = None) -> bool:
 
@@ -847,11 +848,7 @@ class DiskCache:
 
     @property
     def length(self) -> int:
-        stamp = getattr(self, '_length', 0)
-        now = current()
-        if stamp + self.evict_time < now:
-            self.flush_length(now)
-            setattr(self, '_length', now)
+        self.flush_length(current())
         return len(self)
     
     def has_key(self, key: Any, tag: TG = None) -> bool:
@@ -926,23 +923,19 @@ class DiskCache:
                 return ok
 
     def try_evict(self, sql) -> None:
+        if len(self) < self.max_size:
+            return
         now: Time = current()
-        pre_evict: Time = getattr(self, '_evict', 0)
-        if pre_evict + self.evict_time <= now:
-            if self.length < self.max_size:
-                return
-            sql(
-                'DELETE FROM `cache` '
-                'WHERE `expire` IS NOT NULL '
-                'AND `expire` < ?',
-                (now,)
-            )
-            self.flush_length(now)
-            if len(self) < self.max_size:
-                return
-            _ = self.evict.evict(sql, self.evict_size)
-            setattr(self, '_evict', current())
-
+        sql(
+            'DELETE FROM `cache` '
+            'WHERE `expire` IS NOT NULL '
+            'AND `expire` < ?',
+            (now,)
+        )
+        self.flush_length(now)
+        if len(self) >= self.max_size:
+            _: int = self._evict.evict(sql, self.evict_size)
+            
     def keys(self, tag: TG = empty) -> Iterable[Tuple[Any, str]]:
         now: Time = current()
         n: int = self.length // self.iter_size + 1
