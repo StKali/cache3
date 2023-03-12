@@ -9,7 +9,7 @@ from threading import Lock
 from time import time as current
 from typing import Dict, Any, Iterable, Type, Optional, NoReturn, Tuple, Union, Callable, List
 
-from .utils import Time, TG, Number, get_expire, empty
+from .utils import Time, TG, Number, get_expire, empty, lazy
 
 
 class NullContext(AbstractContextManager):
@@ -350,3 +350,6 @@ class Cache:
     __getitem__ = get
     __delitem__ = delete
     __contains__ = has_key
+
+
+LazyCache = lazy(Cache)

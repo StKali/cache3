@@ -543,7 +543,7 @@ class DiskCache:
             timeout=timeout,
             pragmas=pragmas or _default_pragmas,
         )
-        self._evict: Optinal[EvictInterface] = None
+        self._evict: Optional[EvictInterface] = None
         self.config_evict(evict_policy)
 
         # pickle storage
@@ -1043,5 +1043,6 @@ class DiskCache:
     __setitem__ = set
     __iter__ = keys
     __contains__ = has_key
+
 
 LazyDiskCache = lazy(DiskCache)
