@@ -5,7 +5,7 @@
 
 import operator
 from time import time as current
-from typing import Any, NoReturn, Optional, Callable, Type, Union, Tuple
+from typing import Any, NoReturn, Optional, Callable, Type, Union
 
 # Compatible with multiple types.
 empty: Any = type('empty', (), {

@@ -32,7 +32,9 @@ from time import time as current, sleep
 from typing import Type, Optional, Dict, Any, List, Tuple, Callable, Iterable
 from os import makedirs, getpid, remove as rmfile, path as op
 from hashlib import md5
-from .utils import cached_property, empty, lazy, Time, TG, Number, get_expire, Cache3Error, Cache3Warning
+from .utils import (
+    cached_property, empty, lazy, Time, TG, Number, get_expire, Cache3Error, Cache3Warning
+)
 
 
 QY: Type = Callable[[Any], Cursor]
@@ -208,7 +210,6 @@ class SQLiteEntry:
                     raise TimeoutError(
                         f'Transact timeout. (timeout={self.timeout}).'
                     ) from exc
-
         try:
             yield sql
         except BaseException:
@@ -217,11 +218,10 @@ class SQLiteEntry:
                 self._txn_id = None
                 sql('ROLLBACK')
             raise
-        else:
-            if begin:
-                assert self._txn_id == tid
-                self._txn_id = None
-                sql('COMMIT')
+        if begin:
+            assert self._txn_id == tid
+            self._txn_id = None
+            sql('COMMIT')
 
     def config(self, key: str, value: Any = empty) -> Any:
         """ Info table interaction interface
@@ -798,7 +798,9 @@ class DiskCache:
             'WHERE `key` = ? AND `tag` IS ?',
             (sk, tag)
         )
-        cursor.row_factory = lambda _cursor, _row: {col[0]: _row[idx] for idx, col in enumerate(_cursor.description)}
+        cursor.row_factory = lambda _cursor, _row: {
+            col[0]: _row[idx] for idx, col in enumerate(_cursor.description)
+        }
         row: Optional[Dict[str, Any]] = cursor.fetchone()
         if row:
             row['sk'] = row['key']
