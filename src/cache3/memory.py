@@ -292,7 +292,7 @@ class Cache:
         if tag is empty:
             for tag, cache in self._caches.items():
                 for m in cache.items():
-                    yield *m, tag
+                    yield m[0], m[1], tag
         else:
             cache = self._caches[tag]
             return cache.items()
