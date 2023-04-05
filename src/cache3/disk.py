@@ -686,8 +686,8 @@ class DiskCache:
                 )
         return value + delta
 
-    def decr(self, key: Any, delta: Number) -> Number:
-        return self.incr(key, -delta)
+    def decr(self, key: Any, delta: Number = 1, tag: TG = None) -> Number:
+        return self.incr(key, -delta, tag)
 
     @staticmethod
     def _sub_count(sql: QY) -> bool:
@@ -1040,7 +1040,7 @@ class DiskCache:
     def __repr__(self) -> str:
         return f'<DiskCache: {self.location}>'
 
-    __delete__ = delete
+    __delitem__ = delete
     __getitem__ = get
     __setitem__ = set
     __iter__ = keys

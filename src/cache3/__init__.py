@@ -14,7 +14,7 @@ from cache3.memory import Cache, MiniCache, LazyCache
 __author__: str = 'St·Kali <clarkmonkey@163.com>'
 __name__: str = 'cache3'
 __email__: str = 'clarkmonkey@163.com'
-__version__: str = '0.4.1'
+__version__: str = '0.4.2'
 
 __all__: list = [
     'DiskCache', 'LazyDiskCache',
