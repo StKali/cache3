@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # date: 2023/2/15
+# author: clarkmonkey@163.com
+
 from random import randint
 from pathlib import Path
 from shutil import rmtree

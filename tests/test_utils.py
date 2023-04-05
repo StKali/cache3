@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # date: 2023/2/26
+# author: clarkmonkey@163.com
 
 import pytest
-from cache3.utils import cached_property, lazy, LazyObject
+from cache3.util import cached_property, lazy, LazyObject
 raises = pytest.raises
 
 

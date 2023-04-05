@@ -3,7 +3,7 @@ Welcome to cache3's documentation!
 
 .. image:: https://img.shields.io/badge/LICENSE-MIT-green
     :target: https://github.com/StKali/cache3/blob/master/LICENSE
-.. image:: https://img.shields.io/badge/version-0.2.0-informational
+.. image:: https://img.shields.io/badge/version-0.4.2-informational
     :target: https://pypi.org/project/cache3
 .. image:: https://img.shields.io/badge/python-3.5+-blueviolet
     :target: https://www.python.org
@@ -45,9 +45,6 @@ Feature
 TODO
 ====
 - Improve documentation
-- Optimize big value
-- Support more types
-- Implement multiple cache eviction strategies
 - Faster serialization protocol
 
 

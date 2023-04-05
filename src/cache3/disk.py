@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-# DATE: 2021/9/15
-# Author: clarkmonkey@163.com
+# date: 2021/9/15
+# author: clarkmonkey@163.com
 
 """ DiskCache
 
@@ -14,7 +14,7 @@ so the inter-process data is safe and durable.
 The pickle protocol is used to complete the serialization and deserialization 
 of data. Can satisfy most objects in python.
 
-The cache elimination strategy is optional, and currently supports LRU, LFU, 
+The cache eviction policies are optional, and currently supports LRU, LFU,
 and FIFO. If these don't meet your needs, you can register your own cache 
 eviction policies by `evict_manager.register`.
 """
@@ -22,7 +22,6 @@ eviction policies by `evict_manager.register`.
 import abc
 import pickle
 import warnings
-import functools
 import sys
 from contextlib import contextmanager
 from pathlib import Path
@@ -32,20 +31,17 @@ from time import time as current, sleep
 from typing import Type, Optional, Dict, Any, List, Tuple, Callable, Iterable
 from os import makedirs, getpid, remove as rmfile, path as op
 from hashlib import md5
-from .utils import (
-    cached_property, empty, lazy, Time, TG, Number, get_expire, Cache3Error, Cache3Warning
+from .util import (
+    cached_property, empty, lazy, Time, TG, Number, get_expire, memoize, Cache3Error, Cache3Warning
 )
-
 
 QY: Type = Callable[[Any], Cursor]
 ROW: Type = Optional[Tuple[Any,...]]
-
 RAW: int = 0
 NUMBER: int = 1
 STRING: int = 2
 BYTES: int = 3
 PICKLE: int = 4
-
 
 if sys.version_info > (3, 10):
     from types import NoneType
@@ -58,6 +54,8 @@ _default_charset: str = 'UTF-8'
 _default_directory: str = '~/.cache3'
 # Default sqlite3 filename
 _default_name: str = 'default.sqlite3'
+# Default evict policy
+_default_evict_policy: str = 'lru'
 # SQLite pragma configs
 _default_pragmas: Dict[str, Any] = {
     'auto_vacuum': 1,
@@ -70,9 +68,10 @@ _default_pragmas: Dict[str, Any] = {
 }
 
 
-class SQLiteEntry:
+class SQLiteManager:
     """ SQLite3 database interaction interface, responsible for connection management
-    and transaction commission """
+    and transaction commission.
+    """
 
     def __init__(
             self,
@@ -87,6 +86,7 @@ class SQLiteEntry:
         self.timeout: int = timeout
         self.__local: local = local()
         self.__txn: Optional[int] = None
+        self._txn_id: Optional[int] = None
         self.__connect_configure: Dict[str, Any] = {
             'database': op.join(self.path, self.name),
             'isolation_level': isolation,
@@ -97,7 +97,7 @@ class SQLiteEntry:
                 f'pragmas want dict object but get {type(pragmas)}'
             )
         self.__pragmas_sql: str = ';'.join(
-            'PRAGMA %s=%s' % item for
+            f'PRAGMA {item[0]}={item[1]}' for
             item in (pragmas or _default_pragmas).items()
         )
         if not self.created:
@@ -124,11 +124,11 @@ class SQLiteEntry:
                 '`value` BLOB'
                 ')',
 
-                # set count = 0
+                # create unique index
                 'CREATE UNIQUE INDEX IF NOT EXISTS `idx_info_key` '
                 'ON `info`(`key`)',
 
-                #
+                # set count = 0 and evict policy = lru
                 'INSERT INTO `info`(`key`, `value`) VALUES ("count", 0), ("evict", "lru")',
             ]
 
@@ -148,7 +148,7 @@ class SQLiteEntry:
 
     @property
     def session(self) -> Connection:
-        """ Create a sqlite link, every time you get a link, you need to judge 
+        """ Create a sqlite connection, every time you get a connection, you need to judge
         whether the current connection is independently occupied by a single thread 
         """
         local_pid: int = getattr(self.__local, 'pid', -1)
@@ -181,7 +181,7 @@ class SQLiteEntry:
         return session
 
     def close(self) -> bool:
-
+        """ Close current active connection """
         session: Connection = getattr(self.__local, 'session', None)
         if session is None:
             return True
@@ -191,6 +191,14 @@ class SQLiteEntry:
 
     @contextmanager
     def transact(self, retry: bool = True) -> QY:
+        """ A context manager that will open a SQLite transaction
+
+        Args:
+            retry: Whether to retry until success after a failed transaction
+                rollback.
+        Returns:
+            return a handle to the transaction.
+        """
         sql: QY = self.session.execute
         tid: int = get_ident()
         txn_id: Optional[int] = self.__txn
@@ -240,17 +248,22 @@ class SQLiteEntry:
             ).fetchone()
             return row[0] if row else None
         # set
-        else:
-            return self.session.execute(
-                'INSERT INTO `info`(`key`, `value`) '
-                'VALUES (?, ?) '
-                'ON CONFLICT (`key`) '
-                'DO UPDATE SET `value` = ? ',
-                (key, value, value)
-            ).rowcount == 1
+        return self.session.execute(
+            'INSERT INTO `info`(`key`, `value`) '
+            'VALUES (?, ?) '
+            'ON CONFLICT (`key`) '
+            'DO UPDATE SET `value` = ? ',
+            (key, value, value)
+        ).rowcount == 1
 
 
 class PickleStore:
+    """ Determines how Python objects are stored in the DiskCache.
+
+    1) Simple objects will be stored in a way that SQLite natively supports,
+    2) Large or unsupported objects will be converted to Pickle objects and
+    stored as bytecode.
+    """
 
     def __init__(
             self,
@@ -350,11 +363,9 @@ class PickleStore:
     def read(self, sig: str) -> Optional[bytes]:
 
         file: str = op.join(self.directory, sig)
-        # FIXME: the value reference by many key(s)
+        # TODO: the value reference by many key(s)
         if not op.exists(file):
-            warnings.warn(
-                f'stored file:{file} not found', Cache3Warning
-            )
+            warnings.warn(f'stored file:{file} not found', Cache3Warning)
             return None
         with open(file, 'rb') as fd:
             return fd.read()
@@ -378,6 +389,8 @@ class PickleStore:
 
 class EvictInterface(abc.ABC):
 
+    # The name of the cache eviction policy, which is the unique
+    # identifier of the cache in the ``EvictManager``
     name: str = ''
 
     @abc.abstractmethod
@@ -476,19 +489,21 @@ class FIFOEvict(EvictInterface):
 
 
 class EvictManager(dict):
+    """ Manage all cached data eviction policies. """
 
     def register(self, evict: Type[EvictInterface]) -> None:
+        """ Does not guarantee data concurrent read and write security. """
 
+        # Check if the EvictInterface interface is followed
         if not issubclass(evict, EvictInterface):
             raise Cache3Error(
                 'evict must be inherit `EvictInterface` class'
             )
-
+        # Check if the name already exists
         if evict.name in self:
             raise Cache3Error(
                 f'has been registered evict named {evict.name!r}'
             )
-            
         self[evict.name] = evict
 
     def __missing__(self, key) -> None:
@@ -497,7 +512,7 @@ class EvictManager(dict):
         )
 
 
-evict_manager = EvictManager({
+evict_manager: EvictManager = EvictManager({
     LRUEvict.name: LRUEvict,
     LFUEvict.name: LFUEvict,
     FIFOEvict.name: FIFOEvict,
@@ -507,20 +522,20 @@ evict_manager = EvictManager({
 class DiskCache:
     """ Disk cache based on sqlite and file system """
 
-    def __init__(
+    def __init__(   # pylint: disable=too-many-arguments
             self,
             directory: str = _default_directory,
             name: str = _default_name,
             max_size: int = 1 << 30,
             iter_size: int = 1 << 8,
-            evict_policy: str = 'lru',
+            evict_policy: str = _default_evict_policy,
             evict_size: int = 1 << 6,
             evict_time: Number = 2,
             charset: Optional[str] = None,
             protocol: int = pickle.HIGHEST_PROTOCOL,
             raw_max_size: int = 1 << 17,
             isolation: Optional[str] = None,
-            timeout: Time = 5,
+            timeout: Time = 10 * 60,
             pragmas: Optional[Dict[str, Any]] = None,
 
     ) -> None:
@@ -533,20 +548,20 @@ class DiskCache:
         self.max_size: int = max_size
         self.evict_size: int = evict_size
         self.evict_time: Number = evict_time
+        self._evict: Optional[EvictInterface] = None
         self.iter_size: int = iter_size
         
-        # sqlite
-        self.sqlite: SQLiteEntry = SQLiteEntry(
+        # config sqlite session manager
+        self.sqlite: SQLiteManager = SQLiteManager(
             path=self.directory, 
             name=name,
             isolation=isolation,
             timeout=timeout,
             pragmas=pragmas or _default_pragmas,
         )
-        self._evict: Optional[EvictInterface] = None
+        # config evict policy
         self.config_evict(evict_policy)
-
-        # pickle storage
+        # config pickle storage
         self.store = PickleStore(
             directory=self.directory,
             protocol=protocol,
@@ -567,6 +582,17 @@ class DiskCache:
         return True
 
     def set(self, key: Any, value: Any, timeout: Time = None, tag: TG = None) -> bool:
+        """
+
+        Args:
+            key:
+            value:
+            timeout:
+            tag:
+
+        Returns:
+
+        """
 
         sk, kf = self.store.dumps(key)
         with self.sqlite.transact() as sql:
@@ -583,6 +609,7 @@ class DiskCache:
                 (rowid, ) = row
                 if self._update_row(sql, rowid, sv, vf, timeout, tag):
                     return True
+
             # key not found in cache
             else:
                 ok: bool = self._create_row(sql, sk, kf, sv, vf, timeout, tag)
@@ -592,6 +619,16 @@ class DiskCache:
                 return ok
 
     def get(self, key: Any, default: Any = None, tag: TG = None) -> Any:
+        """
+
+        Args:
+            key:
+            default:
+            tag:
+
+        Returns:
+
+        """
         sk, _ = self.store.dumps(key)
         sql = self.sqlite.session.execute
         row = sql(
@@ -633,12 +670,12 @@ class DiskCache:
         snap: str = str('?, ' * len(sks)).strip(', ')
         rs: Cursor = self.sqlite.session.execute(
             'SELECT `key`, `value`, `vf` FROM `cache`'
-            'WHERE `key` IN (%s) AND `tag` IS ? ' % snap,
+            f'WHERE `key` IN ({snap}) AND `tag` IS ? ',
             (*sks, tag)
         )
 
         vs: dict = {sk: self.store.loads(sv, vf) for sk, sv, vf in rs}
-        result: dict = dict()
+        result: dict = {}
         for idx, key in enumerate(keys):
             v = vs.get(sks[idx], empty)
             if v is not empty:
@@ -646,16 +683,25 @@ class DiskCache:
         return result
 
     def incr(self, key: Any, delta: Number = 1, tag: TG = None) -> Number:
-        """ int, float and (str/bytes) not serialize, so add in sql statement.
+        """ Increases the value by delta (default 1)
+
+        int, float and (str/bytes) not serialize, so add in sql statement.
 
         The increment operation should be implemented through SQLite,
         which is not safe at the Python language level
 
-        Returns:
-            increment result value else raise 'Cache3Error' error.
-        """
+        Args:
+            key: key literal value
+            delta: Increase in size
 
-        sk, kf = self.store.dumps(key)
+        Returns:
+            The new value
+
+        Raises:
+            KeyError: if the key does not exist or has been eliminated
+            TypeError: if value is not a number type
+        """
+        sk, _ = self.store.dumps(key)
         with self.sqlite.transact() as sql:
             row: ROW = sql(
                 'SELECT `value`, `vf` FROM `cache` '
@@ -720,6 +766,7 @@ class DiskCache:
             (sv, vf, tag, now, expire, now, 0, rowid)
         ).rowcount == 1
 
+    # pylint: disable=too-many-arguments
     @staticmethod
     def _create_row(sql: QY, sk: Any, kf: int, sv: Any, vf: int, timeout: Time, tag: TG) -> bool:
 
@@ -756,6 +803,15 @@ class DiskCache:
         return (Path(self.directory) / self.name).as_posix()
 
     def ttl(self, key: Any, tag: TG = None) -> Time:
+        """
+
+        Args:
+            key:
+            tag:
+
+        Returns:
+
+        """
         sk, _ = self.store.dumps(key)
         row: ROW = self.sqlite.session.execute(
             'SELECT `expire` '
@@ -773,6 +829,15 @@ class DiskCache:
         return expire - current()
 
     def delete(self, key: Any, tag: TG = None) -> bool:
+        """
+
+        Args:
+            key:
+            tag:
+
+        Returns:
+
+        """
 
         sk, _ = self.store.dumps(key)
         with self.sqlite.transact() as sql:
@@ -810,9 +875,18 @@ class DiskCache:
             return row
 
     def pop(self, key: Any, default: Any = None, tag: TG = None) -> Any:
+        """
 
+        Args:
+            key:
+            default:
+            tag:
+
+        Returns:
+
+        """
         sql: QY = self.sqlite.session.execute
-        sk, kf = self.store.dumps(key)
+        sk, _ = self.store.dumps(key)
         row: ROW = sql(
             'SELECT `rowid`, `value`, `vf` '
             'FROM `cache` '
@@ -854,7 +928,8 @@ class DiskCache:
         return len(self)
     
     def has_key(self, key: Any, tag: TG = None) -> bool:
-        sk, kf = self.store.dumps(key)
+        """ Return True if the key in cache else False. """
+        sk, _ = self.store.dumps(key)
         return bool(self.sqlite.session.execute(
             'SELECT 1 FROM `cache` '
             'WHERE `key` = ? '
@@ -877,30 +952,10 @@ class DiskCache:
                 (new_expire, sk, tag, now)
             ).rowcount == 1
 
-    def memoize(self, timeout: Time = 24 * 60 * 60, tag: TG = None) -> Any:
-        """ The cache is decorated with the return value of the function,
-        and the timeout is available. """
-
-        def decorator(func: Optional[Callable] = None) -> Callable[[Callable[[Any], Any]], Any]:
-            """ Decorator created by memoize() for callable `func`."""
-            if not callable(func):
-                raise TypeError(
-                    'The `memoize` decorator should be called with a `timeout` parameter.'
-                )
-            @functools.wraps(func)
-            def wrapper(*args, **kwargs) -> Any:
-                """Wrapper for callable to cache arguments and return values."""
-                value: Any = self.get(func.__name__, empty, tag)
-                if value is empty:
-                    value: Any = func(*args, **kwargs)
-                    self.set(func.__name__, value, timeout, tag)
-                return value
-            return wrapper
-
-        return decorator
-
     def ex_set(self, key: Any, value: Any, timeout: Time = None, tag: TG = None) -> bool:
-
+        """ Write the key-value relationship when the data does not exist in the cache,
+        otherwise the set operation will be cancelled
+        """
         sk, kf = self.store.dumps(key)
         with self.sqlite.transact() as sql:
             row = sql(
@@ -916,15 +971,15 @@ class DiskCache:
                     return False
                 sv, vf = self.store.dumps(value)
                 return self._update_row(sql, rowid, sv, vf, timeout, tag)
-            else:
-                sv, vf = self.store.dumps(value)
-                ok: bool = self._create_row(sql, sk, kf, sv, vf, timeout, tag)
-                if ok:
-                    self._add_count(sql)
-                    self.try_evict(sql)
-                return ok
+            sv, vf = self.store.dumps(value)
+            ok: bool = self._create_row(sql, sk, kf, sv, vf, timeout, tag)
+            if ok:
+                self._add_count(sql)
+                self.try_evict(sql)
+            return ok
 
     def try_evict(self, sql) -> None:
+        """ try to evict expired data """
         if len(self) < self.max_size:
             return
         now: Time = current()
@@ -939,6 +994,9 @@ class DiskCache:
             _: int = self._evict.evict(sql, self.evict_size)
             
     def keys(self, tag: TG = empty) -> Iterable[Tuple[Any, str]]:
+        """ Returns all keys when tag is specified, otherwise it
+        returns both key and tag
+        """
         now: Time = current()
         n: int = self.length // self.iter_size + 1
         sql: QY = self.sqlite.session.execute
@@ -968,7 +1026,10 @@ class DiskCache:
                     if line:
                         yield self.store.loads(*line[:2])
 
-    def values(self, tag: TG = empty) -> Iterable[Tuple[Any, str]]:
+    def values(self, tag: TG = empty) -> Iterable[Tuple]:
+        """ Returns all values when tag is specified, otherwise it
+        returns both value and tag
+        """
         now: Time = current()
         n: int = self.length // self.iter_size + 1
         sql: QY = self.sqlite.session.execute
@@ -998,8 +1059,14 @@ class DiskCache:
                     if line:
                         yield self.store.loads(*line)
 
-    def items(self, tag: TG = empty) -> Iterable[Tuple[Any, Any, str]]:
-        
+    def items(self, tag: TG = empty) -> Iterable[Tuple]:
+        """ Returns all key-value relationships under the tag namespace in
+        the cache database when tag is specified.
+        Otherwise, all key-value-tags in the database are returned.
+
+        Note: that whether tag is specified or not will determine the difference
+        in the return value
+        """
         now: Time = current()
         n: int = self.length // self.iter_size + 1
         sql: QY = self.sqlite.session.execute
@@ -1040,6 +1107,7 @@ class DiskCache:
     def __repr__(self) -> str:
         return f'<DiskCache: {self.location}>'
 
+    memoize = memoize
     __delitem__ = delete
     __getitem__ = get
     __setitem__ = set

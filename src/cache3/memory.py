@@ -1,7 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-# DATE: 2021/7/24
-# Author: clarkmonkey@163.com
+# date: 2021/7/24
+# author: clarkmonkey@163.com
+
+""" memory
+
+"""
+
 import functools
 from collections import OrderedDict
 from contextlib import AbstractContextManager
@@ -9,7 +14,7 @@ from threading import Lock
 from time import time as current
 from typing import Dict, Any, Iterable, Type, Optional, NoReturn, Tuple, Union, Callable, List
 
-from .utils import Time, TG, Number, get_expire, empty, lazy
+from .util import Time, TG, Number, get_expire, empty, lazy, memoize
 
 
 class NullContext(AbstractContextManager):
@@ -35,6 +40,11 @@ SK: Type = Tuple[Any, TG]
 
 
 class MiniCache:
+    """ A simple dictionary-based in-memory cache that supports automatic
+    data elimination and does not support tag.
+
+    Cache is built based on minicache, but cache is tag-supported.
+    """
 
     def __init__(self, 
                 name: str, 
@@ -70,7 +80,8 @@ class MiniCache:
             for key in keys:
                 if self._has_expired(key):
                     self._del(key)
-            res[key] = self._cache[key]
+                else:
+                    res[key] = self._cache[key]
         return res
 
     def ex_set(self, key: Any, value: Any, timeout: Time = None) -> bool:
@@ -114,6 +125,8 @@ class MiniCache:
         return decorator
 
     def incr(self, key: Any, delta: Number = 1) -> Number:
+        """ Increases the value by delta (default 1) """
+
         with self._lock:
             if self._has_expired(key):
                 self._del(key)
@@ -121,7 +134,8 @@ class MiniCache:
             value = self._cache[key]
             if not isinstance(value, (int, float)) or not isinstance(delta, (int, float)):
                 raise TypeError(
-                    f'unsupported operand type(s) for +/-: {type(value)!r} and {type(delta)!r}'
+                    'unsupported operand type(s) for +/-: '
+                    f'{type(value)!r} and {type(delta)!r}'
                 )
             value += delta
             self._cache[key] = value
@@ -225,6 +239,7 @@ class _Caches(dict):
 
 
 class Cache:
+    """ Memory-based cache instance """
     
     def __init__(self, name: str, *args, **kwargs) -> None:
         self.name: str = name
@@ -290,9 +305,9 @@ class Cache:
     
     def items(self, tag: TG = empty) -> Iterable[Tuple[Any, ...]]:
         if tag is empty:
-            for tag, cache in self._caches.items():
+            for _tag, cache in self._caches.items():
                 for m in cache.items():
-                    yield m[0], m[1], tag
+                    yield m[0], m[1], _tag
         else:
             cache = self._caches[tag]
             return cache.items()
@@ -315,36 +330,13 @@ class Cache:
             cache = self._caches[tag]
             return cache.values()
 
-    def memoize(self, timeout: Time = 24 * 60 * 60, tag: TG = None) -> Any:
-        """ The cache is decorated with the return value of the function,
-        and the timeout is available. """
-
-        def decorator(func: Optional[Callable] = None) -> Callable[[Callable[[Any], Any]], Any]:
-            """ Decorator created by memoize() for callable `func`."""
-            
-            if not callable(func):
-                raise TypeError(
-                    'The `memoize` decorator should be called with a `timeout` parameter.'
-                )
-
-            @functools.wraps(func)
-            def wrapper(*args, **kwargs) -> Any:
-                """Wrapper for callable to cache arguments and return values."""
-                value: Any = self.get(func.__name__, empty, tag)
-                if value is empty:
-                    value: Any = func(*args, **kwargs)
-                    self.set(func.__name__, value, timeout, tag)
-                return value
-            return wrapper
-
-        return decorator
-
     def __len__(self) -> int:
         return sum(len(cache) for cache in self._caches.values())
     
     def __repr__(self) -> str:
         return f'<Cache buckets:{len(self._caches)}>'
 
+    memoize = memoize
     __iter__ = keys
     __setitem__ = set
     __getitem__ = get
