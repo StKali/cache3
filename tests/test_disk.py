@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # date: 2023/2/15
+# author: clarkmonkey@163.com
+
 import pickle
 from pathlib import Path
 from shutil import rmtree
 
 import pytest
-from cache3.disk import (SQLiteEntry, PickleStore, empty, BYTES, NUMBER, STRING, RAW, PICKLE, EvictManager,
-                         EvictInterface, LRUEvict, FIFOEvict, LFUEvict, DiskCache
-                         )
-from cache3.utils import Cache3Error, Cache3Warning
+from cache3.disk import (
+    SQLiteManager, PickleStore, empty, BYTES, NUMBER, STRING, RAW, PICKLE, EvictManager,
+    EvictInterface, LRUEvict, FIFOEvict, LFUEvict, DiskCache
+)
+from cache3.util import Cache3Error, Cache3Warning
 from sqlite3 import Connection
 from threading import Thread
 from utils import rand_string, rand_strings
@@ -29,23 +32,23 @@ def teardown_module():
     rmtree(test_directory.as_posix())
 
 
-class TestSQLiteEntry:
+class TestSQLiteManager:
 
     def test_instance(self):
         test_dir = test_directory / f'test-disk-{rand_string()}'
         test_dir.mkdir(exist_ok=True, parents=True)
 
         # success
-        assert SQLiteEntry(test_dir.as_posix(), rand_string(), None, 5)
+        assert SQLiteManager(test_dir.as_posix(), rand_string(), None, 5)
         
         # invalid pragmas
         with raises(TypeError, match='pragmas want dict object but get .*'):
-            SQLiteEntry(test_dir.as_posix(), rand_string(), None, 5, pragmas=1)
+            SQLiteManager(test_dir.as_posix(), rand_string(), None, 5, pragmas=1)
 
     def test_session(self):
         test_dir = test_directory / f'test-disk-{rand_string()}'
         test_dir.mkdir(exist_ok=True, parents=True)
-        entry = SQLiteEntry(test_dir.as_posix(), rand_string(), None, 5)
+        entry = SQLiteManager(test_dir.as_posix(), rand_string(), None, 5)
         assert isinstance(entry.session, Connection)
         assert entry.close()
 
@@ -74,7 +77,7 @@ class TestSQLiteEntry:
     def test_config(self):
         test_dir = test_directory / f'test-disk-{rand_string()}'
         test_dir.mkdir(exist_ok=True, parents=True)
-        entry = SQLiteEntry(test_dir.as_posix(), rand_string(), None, 5)
+        entry = SQLiteManager(test_dir.as_posix(), rand_string(), None, 5)
         assert entry.config('name') is None
         assert entry.config('name',  'value')
         assert entry.config('name') == 'value'

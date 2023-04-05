@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # date: 2023/2/15
+# author: clarkmonkey@163.com
 
 import pytest
-from cache3.utils import empty
+from cache3.util import empty
 from cache3 import MiniCache, Cache, DiskCache
 from shutil import rmtree
 from utils import rand_strings, rand_string
