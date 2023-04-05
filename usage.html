@@ -184,7 +184,6 @@
 <li class="toctree-l1"><a class="reference internal" href="#quick-start">Quick start</a></li>
 <li class="toctree-l1"><a class="reference internal" href="#memory-based-cache">memory-based cache</a></li>
 <li class="toctree-l1"><a class="reference internal" href="#disk-based-cache">disk-based cache</a></li>
-<li class="toctree-l1"><a class="reference internal" href="#mixin-extend">Mixin &amp; Extend</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
 </ul>
 
@@ -222,10 +221,10 @@
           <section id="overview">
 <h1>Overview<a class="headerlink" href="#overview" title="Permalink to this heading">#</a></h1>
 <p><a class="reference internal" href="index.html"><span class="doc">cache3</span></a> supports both <strong>memory</strong> and <strong>disk</strong> cache backends.</p>
-<p><strong>Memory-based</strong> cache has good performance but does not support data persistence.</p>
-<p><strong>Disk-based</strong> caches support persistence but have slightly lower performance.</p>
-<p>Regardless of which cache is used, they all follow the same API, which means that the backend implementation of the cache can be switched at will without cost.
-If the built-in caching strategies are not suitable for your specific business, you can quickly build a suitable cache based on them. If you really want to do that, <a class="reference internal" href="#extend"><span class="std std-ref">Mixin &amp; Extend</span></a></p>
+<p><strong>memory-based</strong> cache has good performance but does not support data persistence.</p>
+<p><strong>disk-based</strong> caches support persistence but have slightly lower performance.</p>
+<p>Regardless of which cache is used, they all follow the same API, which means that the backend implementation of the cache can be switched at will without cost.</p>
+<p>The built-in cache policies are LRU, LFU, FIFO, and if these don’t meet your needs, you can extend them with <cite>manager</cite>.</p>
 </section>
 <section id="installation">
 <span id="id1"></span><h1>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">#</a></h1>
@@ -454,12 +453,12 @@ If you want to specify these parameters, <code class="xref py py-meth docutils l
 <section id="memory-based-cache">
 <span id="memory-based"></span><h1>memory-based cache<a class="headerlink" href="#memory-based-cache" title="Permalink to this heading">#</a></h1>
 <p>Memory-based caches will completely lose the data in the cache when the program crashes or exits, in other words, they do not support data persistence.</p>
-<section id="simplecache">
-<h2>SimpleCache<a class="headerlink" href="#simplecache" title="Permalink to this heading">#</a></h2>
+<section id="minicache">
+<h2>MiniCache<a class="headerlink" href="#minicache" title="Permalink to this heading">#</a></h2>
 <p><code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleCache</span></code> is a thread-unsafe cache, which aims to provide high performance but does not guarantee data safety under multi-threading. <code class="xref py py-class docutils literal notranslate"><span class="pre">SafeCache</span></code> is a good choice if you want thread safety.</p>
 </section>
-<section id="safecache">
-<h2>SafeCache<a class="headerlink" href="#safecache" title="Permalink to this heading">#</a></h2>
+<section id="cache">
+<h2>Cache<a class="headerlink" href="#cache" title="Permalink to this heading">#</a></h2>
 <p><code class="xref py py-class docutils literal notranslate"><span class="pre">SafeCache</span></code> is a thread-safe cache. It has exactly the same implementation as <code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleCache</span></code>, based on Python’s <a class="reference external" href="https://docs.python.org/3/library/collections.html#collections.OrderedDict">OrderedDict</a>, the difference is the type of Lock, <code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleCache</span></code> Lock is an empty lock, while  <code class="xref py py-class docutils literal notranslate"><span class="pre">SafeCache</span></code> uses <a class="reference external" href="https://docs.python.org/3/library/threading.html#threading.Lock">threading.Lock</a> to ensure its thread safety.</p>
 </section>
 </section>
@@ -470,12 +469,6 @@ If you want to specify these parameters, <code class="xref py py-meth docutils l
 <p class="admonition-title">Note</p>
 <p>Since the disk cache is based on <a class="reference external" href="https://www.sqlite.org/index.html">SQLite3</a>, even after a series of optimizations, it still needs to be carefully considered whether it will become a concurrency bottleneck. In fact, in most cases it is sufficient.</p>
 </div>
-<section id="simplediskcache">
-<h2>SimpleDiskCache<a class="headerlink" href="#simplediskcache" title="Permalink to this heading">#</a></h2>
-<p><code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleDiskCache</span></code> is a base class for all disk cache.</p>
-<p>Most of the methods of disk cache are implemented in this class. It uses the <code class="xref py py-meth docutils literal notranslate"><span class="pre">serialize()</span></code> and <code class="xref py py-meth docutils literal notranslate"><span class="pre">deserialize()</span></code> methods. Therefore, there are strict requirements for key and value types. <strong>That means key and value can only be one of the types int, float, string, bytes and bool supported by SQLite.</strong></p>
-<p>Typically, subclasses override the <code class="xref py py-meth docutils literal notranslate"><span class="pre">serialize()</span></code> and <code class="xref py py-meth docutils literal notranslate"><span class="pre">deserialize()</span></code> methods of key and value to support more types. This is also true for some default implementations, such as <a class="reference internal" href="api.html#cache3.DiskCache" title="cache3.DiskCache"><code class="xref py py-class docutils literal notranslate"><span class="pre">DiskCache</span></code></a> and <code class="xref py py-class docutils literal notranslate"><span class="pre">JsonDiskCache</span></code></p>
-</section>
 <section id="diskcache">
 <h2>DiskCache<a class="headerlink" href="#diskcache" title="Permalink to this heading">#</a></h2>
 <p><a class="reference internal" href="api.html#cache3.DiskCache" title="cache3.DiskCache"><code class="xref py py-class docutils literal notranslate"><span class="pre">DiskCache</span></code></a> overrides <code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleDiskCache</span></code>’s <code class="xref py py-meth docutils literal notranslate"><span class="pre">serialize()</span></code> and <code class="xref py py-meth docutils literal notranslate"><span class="pre">deserialize()</span></code> methods by inheriting <code class="xref py py-class docutils literal notranslate"><span class="pre">PickleMixin</span></code>  mixins to support more data types, but has no difference with <code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleDiskCache</span></code>.</p>
@@ -486,17 +479,6 @@ If you want to specify these parameters, <code class="xref py py-meth docutils l
 <li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">JsonDiskCache</span></code></p></li>
 </ul>
 </section>
-<section id="jsondiskcache">
-<h2>JsonDiskCache<a class="headerlink" href="#jsondiskcache" title="Permalink to this heading">#</a></h2>
-<p><code class="xref py py-class docutils literal notranslate"><span class="pre">JsonDiskCache</span></code> similar to <a class="reference internal" href="api.html#cache3.DiskCache" title="cache3.DiskCache"><code class="xref py py-class docutils literal notranslate"><span class="pre">DiskCache</span></code></a>, except that he inherits <code class="xref py py-class docutils literal notranslate"><span class="pre">JSONMixin</span></code>.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">JsonDiskCache</span><span class="p">(</span><span class="n">JSONMixin</span><span class="p">,</span> <span class="n">SimpleDiskCache</span><span class="p">):</span>
-</pre></div>
-</div>
-</section>
-</section>
-<section id="mixin-extend">
-<span id="extend"></span><h1>Mixin &amp; Extend<a class="headerlink" href="#mixin-extend" title="Permalink to this heading">#</a></h1>
-<p>TODO …</p>
 </section>
 
         </article>
@@ -528,7 +510,7 @@ If you want to specify these parameters, <code class="xref py py-meth docutils l
         <div class="bottom-of-page">
           <div class="left-details">
             <div class="copyright">
-                Copyright &#169; 2022, St·Kali &lt;clarkmonkey@163.com&gt;
+                Copyright &#169; 2021, St·Kali &lt;clarkmonkey@163.com&gt;
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
             

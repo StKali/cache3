@@ -184,7 +184,6 @@
 <li class="toctree-l1"><a class="reference internal" href="usage.html#quick-start">Quick start</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html#memory-based-cache">memory-based cache</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html#disk-based-cache">disk-based cache</a></li>
-<li class="toctree-l1"><a class="reference internal" href="usage.html#mixin-extend">Mixin &amp; Extend</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
 </ul>
 
@@ -222,7 +221,7 @@
           <section id="welcome-to-cache3-s-documentation">
 <h1>Welcome to cache3’s documentation!<a class="headerlink" href="#welcome-to-cache3-s-documentation" title="Permalink to this heading">#</a></h1>
 <a class="reference external image-reference" href="https://github.com/StKali/cache3/blob/master/LICENSE"><img alt="https://img.shields.io/badge/LICENSE-MIT-green" src="https://img.shields.io/badge/LICENSE-MIT-green" /></a>
-<a class="reference external image-reference" href="https://pypi.org/project/cache3"><img alt="https://img.shields.io/badge/version-0.2.0-informational" src="https://img.shields.io/badge/version-0.2.0-informational" /></a>
+<a class="reference external image-reference" href="https://pypi.org/project/cache3"><img alt="https://img.shields.io/badge/version-0.4.2-informational" src="https://img.shields.io/badge/version-0.4.2-informational" /></a>
 <a class="reference external image-reference" href="https://www.python.org"><img alt="https://img.shields.io/badge/python-3.5+-blueviolet" src="https://img.shields.io/badge/python-3.5+-blueviolet" /></a>
 <p><strong>Cache3</strong> is a MIT licensed  safe and lightweight cache library, written
 in pure-Python.</p>
@@ -251,39 +250,64 @@ in pure-Python.</p>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html#memory-based-cache">memory-based cache</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="usage.html#simplecache">SimpleCache</a></li>
-<li class="toctree-l2"><a class="reference internal" href="usage.html#safecache">SafeCache</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#minicache">MiniCache</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#cache">Cache</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html#disk-based-cache">disk-based cache</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="usage.html#simplediskcache">SimpleDiskCache</a></li>
 <li class="toctree-l2"><a class="reference internal" href="usage.html#diskcache">DiskCache</a></li>
-<li class="toctree-l2"><a class="reference internal" href="usage.html#jsondiskcache">JsonDiskCache</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="usage.html#mixin-extend">Mixin &amp; Extend</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="api.html#basecache">BaseCache</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#simplecache">SimpleCache</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#safecache">SafeCache</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#simplediskcache">SimpleDiskCache</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#minicache">MiniCache</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#cache3.MiniCache"><code class="docutils literal notranslate"><span class="pre">MiniCache</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#cache3.MiniCache.__init__"><code class="docutils literal notranslate"><span class="pre">MiniCache.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#cache3.MiniCache.__repr__"><code class="docutils literal notranslate"><span class="pre">MiniCache.__repr__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#cache3.MiniCache.incr"><code class="docutils literal notranslate"><span class="pre">MiniCache.incr()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#cache3.MiniCache.memoize"><code class="docutils literal notranslate"><span class="pre">MiniCache.memoize()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#cache">Cache</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#cache3.Cache"><code class="docutils literal notranslate"><span class="pre">Cache</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#cache3.Cache.__init__"><code class="docutils literal notranslate"><span class="pre">Cache.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#cache3.Cache.__repr__"><code class="docutils literal notranslate"><span class="pre">Cache.__repr__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#cache3.Cache.memoize"><code class="docutils literal notranslate"><span class="pre">Cache.memoize()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#diskcache">DiskCache</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="api.html#cache3.DiskCache"><code class="docutils literal notranslate"><span class="pre">DiskCache</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#cache3.DiskCache.__contains__"><code class="docutils literal notranslate"><span class="pre">DiskCache.__contains__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#cache3.DiskCache.__delitem__"><code class="docutils literal notranslate"><span class="pre">DiskCache.__delitem__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#cache3.DiskCache.__getitem__"><code class="docutils literal notranslate"><span class="pre">DiskCache.__getitem__()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="api.html#cache3.DiskCache.__init__"><code class="docutils literal notranslate"><span class="pre">DiskCache.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#cache3.DiskCache.__iter__"><code class="docutils literal notranslate"><span class="pre">DiskCache.__iter__()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="api.html#cache3.DiskCache.__repr__"><code class="docutils literal notranslate"><span class="pre">DiskCache.__repr__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#cache3.DiskCache.__setitem__"><code class="docutils literal notranslate"><span class="pre">DiskCache.__setitem__()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="api.html#cache3.DiskCache.clear"><code class="docutils literal notranslate"><span class="pre">DiskCache.clear()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#cache3.DiskCache.delete"><code class="docutils literal notranslate"><span class="pre">DiskCache.delete()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#cache3.DiskCache.ex_set"><code class="docutils literal notranslate"><span class="pre">DiskCache.ex_set()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#cache3.DiskCache.get"><code class="docutils literal notranslate"><span class="pre">DiskCache.get()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="api.html#cache3.DiskCache.get_many"><code class="docutils literal notranslate"><span class="pre">DiskCache.get_many()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#cache3.DiskCache.has_key"><code class="docutils literal notranslate"><span class="pre">DiskCache.has_key()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="api.html#cache3.DiskCache.incr"><code class="docutils literal notranslate"><span class="pre">DiskCache.incr()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="api.html#cache3.DiskCache.inspect"><code class="docutils literal notranslate"><span class="pre">DiskCache.inspect()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#cache3.DiskCache.items"><code class="docutils literal notranslate"><span class="pre">DiskCache.items()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#cache3.DiskCache.keys"><code class="docutils literal notranslate"><span class="pre">DiskCache.keys()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="api.html#cache3.DiskCache.memoize"><code class="docutils literal notranslate"><span class="pre">DiskCache.memoize()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#cache3.DiskCache.pop"><code class="docutils literal notranslate"><span class="pre">DiskCache.pop()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#cache3.DiskCache.set"><code class="docutils literal notranslate"><span class="pre">DiskCache.set()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="api.html#cache3.DiskCache.touch"><code class="docutils literal notranslate"><span class="pre">DiskCache.touch()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#cache3.DiskCache.try_evict"><code class="docutils literal notranslate"><span class="pre">DiskCache.try_evict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#cache3.DiskCache.ttl"><code class="docutils literal notranslate"><span class="pre">DiskCache.ttl()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#cache3.DiskCache.values"><code class="docutils literal notranslate"><span class="pre">DiskCache.values()</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#jsondiskcache">JsonDiskCache</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#picklemixin">PickleMixin</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#jsonmixin">JSONMixin</a></li>
 </ul>
 </li>
 </ul>
@@ -307,9 +331,6 @@ in pure-Python.</p>
 <h1>TODO<a class="headerlink" href="#todo" title="Permalink to this heading">#</a></h1>
 <ul class="simple">
 <li><p>Improve documentation</p></li>
-<li><p>Optimize big value</p></li>
-<li><p>Support more types</p></li>
-<li><p>Implement multiple cache eviction strategies</p></li>
 <li><p>Faster serialization protocol</p></li>
 </ul>
 </section>
@@ -341,7 +362,7 @@ in pure-Python.</p>
         <div class="bottom-of-page">
           <div class="left-details">
             <div class="copyright">
-                Copyright &#169; 2022, St·Kali &lt;clarkmonkey@163.com&gt;
+                Copyright &#169; 2021, St·Kali &lt;clarkmonkey@163.com&gt;
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
             

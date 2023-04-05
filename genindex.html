@@ -182,7 +182,6 @@
 <li class="toctree-l1"><a class="reference internal" href="usage.html#quick-start">Quick start</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html#memory-based-cache">memory-based cache</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html#disk-based-cache">disk-based cache</a></li>
-<li class="toctree-l1"><a class="reference internal" href="usage.html#mixin-extend">Mixin &amp; Extend</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
 </ul>
 
@@ -219,17 +218,39 @@
           
 <section class="genindex-section">
   <h1 id="index">Index</h1>
-  <div class="genindex-jumpbox"><a href="#_"><strong>_</strong></a> | <a href="#C"><strong>C</strong></a> | <a href="#D"><strong>D</strong></a> | <a href="#G"><strong>G</strong></a> | <a href="#I"><strong>I</strong></a> | <a href="#M"><strong>M</strong></a> | <a href="#T"><strong>T</strong></a></div>
+  <div class="genindex-jumpbox"><a href="#_"><strong>_</strong></a> | <a href="#C"><strong>C</strong></a> | <a href="#D"><strong>D</strong></a> | <a href="#E"><strong>E</strong></a> | <a href="#G"><strong>G</strong></a> | <a href="#H"><strong>H</strong></a> | <a href="#I"><strong>I</strong></a> | <a href="#K"><strong>K</strong></a> | <a href="#M"><strong>M</strong></a> | <a href="#P"><strong>P</strong></a> | <a href="#S"><strong>S</strong></a> | <a href="#T"><strong>T</strong></a> | <a href="#V"><strong>V</strong></a></div>
 </section>
 <section id="_" class="genindex-section">
   <h2>_</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="api.html#cache3.DiskCache.__init__">__init__() (cache3.DiskCache method)</a>
+        <li><a href="api.html#cache3.DiskCache.__contains__">__contains__() (cache3.DiskCache method)</a>
 </li>
+        <li><a href="api.html#cache3.DiskCache.__delitem__">__delitem__() (cache3.DiskCache method)</a>
+</li>
+        <li><a href="api.html#cache3.DiskCache.__getitem__">__getitem__() (cache3.DiskCache method)</a>
+</li>
+        <li><a href="api.html#cache3.Cache.__init__">__init__() (cache3.Cache method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.DiskCache.__init__">(cache3.DiskCache method)</a>
+</li>
+          <li><a href="api.html#cache3.MiniCache.__init__">(cache3.MiniCache method)</a>
+</li>
+        </ul></li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="api.html#cache3.DiskCache.__repr__">__repr__() (cache3.DiskCache method)</a>
+        <li><a href="api.html#cache3.DiskCache.__iter__">__iter__() (cache3.DiskCache method)</a>
+</li>
+        <li><a href="api.html#cache3.Cache.__repr__">__repr__() (cache3.Cache method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.DiskCache.__repr__">(cache3.DiskCache method)</a>
+</li>
+          <li><a href="api.html#cache3.MiniCache.__repr__">(cache3.MiniCache method)</a>
+</li>
+        </ul></li>
+        <li><a href="api.html#cache3.DiskCache.__setitem__">__setitem__() (cache3.DiskCache method)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -239,6 +260,8 @@
   <h2>C</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.Cache">Cache (class in cache3)</a>
+</li>
         <li>
     cache3
 
@@ -258,7 +281,21 @@
   <h2>D</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.DiskCache.delete">delete() (cache3.DiskCache method)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="api.html#cache3.DiskCache">DiskCache (class in cache3)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="E" class="genindex-section">
+  <h2>E</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.DiskCache.ex_set">ex_set() (cache3.DiskCache method)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -268,7 +305,21 @@
   <h2>G</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.DiskCache.get">get() (cache3.DiskCache method)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="api.html#cache3.DiskCache.get_many">get_many() (cache3.DiskCache method)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="H" class="genindex-section">
+  <h2>H</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.DiskCache.has_key">has_key() (cache3.DiskCache method)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -279,10 +330,26 @@
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="api.html#cache3.DiskCache.incr">incr() (cache3.DiskCache method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.MiniCache.incr">(cache3.MiniCache method)</a>
 </li>
+        </ul></li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="api.html#cache3.DiskCache.inspect">inspect() (cache3.DiskCache method)</a>
+</li>
+        <li><a href="api.html#cache3.DiskCache.items">items() (cache3.DiskCache method)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="K" class="genindex-section">
+  <h2>K</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.DiskCache.keys">keys() (cache3.DiskCache method)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -292,10 +359,18 @@
   <h2>M</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="api.html#cache3.DiskCache.memoize">memoize() (cache3.DiskCache method)</a>
+        <li><a href="api.html#cache3.Cache.memoize">memoize() (cache3.Cache method)</a>
+
+        <ul>
+          <li><a href="api.html#cache3.DiskCache.memoize">(cache3.DiskCache method)</a>
 </li>
+          <li><a href="api.html#cache3.MiniCache.memoize">(cache3.MiniCache method)</a>
+</li>
+        </ul></li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.MiniCache">MiniCache (class in cache3)</a>
+</li>
         <li>
     module
 
@@ -307,11 +382,47 @@
   </tr></table>
 </section>
 
+<section id="P" class="genindex-section">
+  <h2>P</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.DiskCache.pop">pop() (cache3.DiskCache method)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="S" class="genindex-section">
+  <h2>S</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.DiskCache.set">set() (cache3.DiskCache method)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
 <section id="T" class="genindex-section">
   <h2>T</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="api.html#cache3.DiskCache.touch">touch() (cache3.DiskCache method)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.DiskCache.try_evict">try_evict() (cache3.DiskCache method)</a>
+</li>
+        <li><a href="api.html#cache3.DiskCache.ttl">ttl() (cache3.DiskCache method)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="V" class="genindex-section">
+  <h2>V</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#cache3.DiskCache.values">values() (cache3.DiskCache method)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -329,7 +440,7 @@
         <div class="bottom-of-page">
           <div class="left-details">
             <div class="copyright">
-                Copyright &#169; 2022, St·Kali &lt;clarkmonkey@163.com&gt;
+                Copyright &#169; 2021, St·Kali &lt;clarkmonkey@163.com&gt;
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
             
