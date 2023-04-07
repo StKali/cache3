@@ -44,15 +44,14 @@ class cached_property:
     """
     name: Optional[str] = None
 
-    # pylint: disable=method-hidden
     @staticmethod
-    def func(instance) -> NoReturn:
+    def func(instance) -> NoReturn:  # pylint: disable=method-hidden
         raise TypeError(
             'Cannot use cached_property instance without calling '
             '__set_name__() on it.'
         )
 
-    def __init__(self, func: Callable) -> None:
+    def __init__(self, func: Callable, _: Optional[str] = None) -> None:
         self.real_func: Callable = func
         self.__doc__: str = getattr(func, '__doc__')
 
