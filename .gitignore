@@ -22,6 +22,7 @@ build&public.sh
 
 # Sphinx
 _build
+
 # C extensions
 *.so
 

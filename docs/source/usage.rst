@@ -2,13 +2,13 @@ Overview
 ========
 :doc:`cache3 <index>` supports both **memory** and **disk** cache backends.
 
-**Memory-based** cache has good performance but does not support data persistence.
+**memory-based** cache has good performance but does not support data persistence.
 
-**Disk-based** caches support persistence but have slightly lower performance.
+**disk-based** caches support persistence but have slightly lower performance.
 
 Regardless of which cache is used, they all follow the same API, which means that the backend implementation of the cache can be switched at will without cost.
-If the built-in caching strategies are not suitable for your specific business, you can quickly build a suitable cache based on them. If you really want to do that, :ref:`Mixin & Extend <extend>`
 
+The built-in cache policies are LRU, LFU, FIFO, and if these don't meet your needs, you can extend them with `manager`.
 
 
 .. _installation:
@@ -286,12 +286,13 @@ memory-based cache
 
 Memory-based caches will completely lose the data in the cache when the program crashes or exits, in other words, they do not support data persistence.
 
-SimpleCache
+MiniCache
 -----------
 
 :class:`SimpleCache <cache3.SimpleCache>` is a thread-unsafe cache, which aims to provide high performance but does not guarantee data safety under multi-threading. :class:`SafeCache <cache3.SafeCache>` is a good choice if you want thread safety.
 
-SafeCache
+
+Cache
 ---------
 
 :class:`SafeCache <cache3.SafeCache>` is a thread-safe cache. It has exactly the same implementation as :class:`SimpleCache <cache3.SimpleCache>`, based on Python's `OrderedDict <https://docs.python.org/3/library/collections.html#collections.OrderedDict>`_, the difference is the type of Lock, :class:`SimpleCache <cache3.SimpleCache>` Lock is an empty lock, while  :class:`SafeCache <cache3.SafeCache>` uses `threading.Lock <https://docs.python.org/3/library/threading.html#threading.Lock>`_ to ensure its thread safety.
@@ -311,19 +312,6 @@ The disk-based cache backend is implemented in `SQLite3 <https://www.sqlite.org/
 
     Since the disk cache is based on `SQLite3 <https://www.sqlite.org/index.html>`_, even after a series of optimizations, it still needs to be carefully considered whether it will become a concurrency bottleneck. In fact, in most cases it is sufficient.
 
-
-
-
-SimpleDiskCache
----------------
-
-:class:`SimpleDiskCache <cache3.SimpleDiskCache>` is a base class for all disk cache.
-
-Most of the methods of disk cache are implemented in this class. It uses the :meth:`serialize() <cache3.BaseCache.serialize>` and :meth:`deserialize() <cache3.BaseCache.deserialize>` methods. Therefore, there are strict requirements for key and value types. **That means key and value can only be one of the types int, float, string, bytes and bool supported by SQLite.**
-
-Typically, subclasses override the :meth:`serialize() <cache3.BaseCache.serialize>` and :meth:`deserialize() <cache3.BaseCache.deserialize>` methods of key and value to support more types. This is also true for some default implementations, such as :class:`DiskCache <cache3.DiskCache>` and :class:`JsonDiskCache <cache3.JsonDiskCache>`
-
-
 DiskCache
 ---------
 
@@ -335,25 +323,3 @@ DiskCache
 
 
 - :class:`JsonDiskCache <cache3.JsonDiskCache>`
-
-
-JsonDiskCache
--------------
-
-:class:`JsonDiskCache <cache3.JsonDiskCache>` similar to :class:`DiskCache<cache3.DiskCache>`, except that he inherits :class:`JSONMixin <cache3.JSONMixin>`.
-
-
-.. code-block:: python
-
-   class JsonDiskCache(JSONMixin, SimpleDiskCache):
-
-.. _extend:
-
-
-Mixin & Extend
-================
-
-TODO ...
-
-
-

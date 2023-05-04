@@ -1,8 +1,13 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-# DATE: 2021/7/24
-# Author: clarkmonkey@163.com
+# date: 2021/7/24
+# author: clarkmonkey@163.com
 
+""" util
+Tools functions or classes for cache3
+"""
+
+import functools
 import operator
 from time import time as current
 from typing import Any, NoReturn, Optional, Callable, Type, Union
@@ -32,6 +37,7 @@ def get_expire(timeout: Time, now: Time = None) -> Time:
     return (now or current()) + timeout
 
 
+# pylint: disable=invalid-name
 class cached_property:
     """ Decorator that converts a method with a single self argument into a
     property cached on the instance.
@@ -39,13 +45,13 @@ class cached_property:
     name: Optional[str] = None
 
     @staticmethod
-    def func(instance) -> NoReturn:
+    def func(instance) -> NoReturn:  # pylint: disable=method-hidden
         raise TypeError(
             'Cannot use cached_property instance without calling '
             '__set_name__() on it.'
         )
 
-    def __init__(self, func: Callable, name: Optional[str] = None) -> None:
+    def __init__(self, func: Callable, _: Optional[str] = None) -> None:
         self.real_func: Callable = func
         self.__doc__: str = getattr(func, '__doc__')
 
@@ -55,8 +61,8 @@ class cached_property:
             self.func: Callable = self.real_func
         elif name != self.name:
             raise TypeError(
-                "Cannot assign the same cached_property to two different names "
-                "(%r and %r)." % (self.name, name)
+                'Cannot assign the same cached_property to two different names '
+                f'({self.name!r} and {name!r}).'
             )
 
     def __get__(self, instance: Any, cls=None) -> Any:
@@ -73,6 +79,7 @@ class cached_property:
 
 def new_method_proxy(func) -> Callable:
     def inner(self, *args):
+        # pylint: disable=protected-access
         if self._wrapped is empty:
             self._setup()
         return func(self._wrapped, *args)
@@ -140,8 +147,34 @@ class LazyObject:
 
 
 def lazy(factory: Callable) -> Callable:
+
     def wrapper(*args, **kwrags):
         def init():
             return factory(*args, **kwrags)
         return LazyObject(init)
     return wrapper
+
+
+def memoize(self: Any, timeout: Time = 24 * 60 * 60, tag: TG = None) -> Any:
+    """ The cache is decorated with the return value of the function,
+    and the timeout is available. """
+
+    def decorator(func: Optional[Callable] = None) -> Callable[[Callable[[Any], Any]], Any]:
+        """ Decorator created by memoize() for callable `func`."""
+        if not callable(func):
+            raise TypeError(
+                'The `memoize` decorator should be called with a `timeout` parameter.'
+            )
+
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> Any:
+            """Wrapper for callable to cache arguments and return values."""
+            value: Any = self.get(func.__name__, empty, tag)
+            if value is empty:
+                value: Any = func(*args, **kwargs)
+                self.set(func.__name__, value, timeout, tag)
+            return value
+
+        return wrapper
+
+    return decorator

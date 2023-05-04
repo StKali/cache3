@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # date: 2023/2/15
+# author: clarkmonkey@163.com
+
 from random import randint
 from pathlib import Path
 from shutil import rmtree
@@ -54,4 +56,12 @@ class TestDiskCache(CacheApiMixin):
     def teardown_class(self):
         self.cache.sqlite.close()
         rmtree(self.directory.as_posix())
+
+    def test_multi_get_expired(self):
+        self.cache.clear()
+        self.cache.max_size = 2
+        self.cache.set(1, 1, timeout=-1)
+        self.cache.get(1)
+        self.cache.get(1)
+        len(self.cache)
 
