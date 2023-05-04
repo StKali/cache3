@@ -645,7 +645,7 @@ class DiskCache:
         (rowid, sv, expire, vf) = row
         now: Time = current()
         if expire is not None and expire < now:
-            self._sub_count(sql)
+            # self._sub_count(sql)
             # key has expired
             return default
 
@@ -938,7 +938,7 @@ class DiskCache:
             (sk, tag, current())
         ).fetchone())
 
-    def touch(self, key: str, timeout: Time = None, tag: TG = None) -> bool:
+    def touch(self, key: Any, timeout: Time = None, tag: TG = None) -> bool:
         """ Renew the key. When the key does not exist, false will be returned """
         now: Time = current()
         new_expire: Time = get_expire(timeout, now)
@@ -1102,7 +1102,7 @@ class DiskCache:
             'FROM `info` '
             'WHERE `key` = "count"',
         ).fetchone()
-        return length
+        return length if length > 0 else 0
 
     def __repr__(self) -> str:
         return f'<DiskCache: {self.location}>'

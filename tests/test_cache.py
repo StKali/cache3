@@ -57,3 +57,11 @@ class TestDiskCache(CacheApiMixin):
         self.cache.sqlite.close()
         rmtree(self.directory.as_posix())
 
+    def test_multi_get_expired(self):
+        self.cache.clear()
+        self.cache.max_size = 2
+        self.cache.set(1, 1, timeout=-1)
+        self.cache.get(1)
+        self.cache.get(1)
+        len(self.cache)
+
