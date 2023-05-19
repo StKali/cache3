@@ -149,6 +149,8 @@ class TestGeneralCacheApi:
         for cache in self.caches:
             cache.set('key1', 'value', timeout=100)
             assert cache.ttl('key1') > 99
+            # fix #16 ttl returns the expired
+            assert cache.ttl('key1') <= 100
             assert not cache.has_key('key2')
             cache.set('key2', 'value')
             assert cache.ttl('key2') is None

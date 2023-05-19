@@ -170,20 +170,31 @@ class MiniCache:
             return self._cache.pop(key)
 
     def ttl(self, key: Any) -> Time:
-        if self._has_expired(key):
-            return -1
-        return self._expires.get(key, -1)
+        """ returns the key time to live
+        
+        Returns:
+            -1   : the key has been expired
+            None : never expired
+            float: life seconds
+        """
+        expire: Time = self._expires.get(key, -1)
+        if expire == -1 or expire is None:
+            return expire
+        return expire - current()
 
     def inspect(self, key: Any) -> Optional[Dict[str, Any]]:
-        
+        """ inspect the key in cache informations, 
+        returns the dict if the key is existed else None
+        """
         if key not in self._cache:
             return None
         expire: Time = self._expires.get(key, -1)
+
         return {
             'key': key,
             'value': self._cache[key],
             'expire': expire,
-            'ttl': expire if expire is None else expire - current()
+            'ttl': expire if expire is None or expire == -1 else expire - current()
         }
 
     def keys(self) -> Iterable[Any]:
