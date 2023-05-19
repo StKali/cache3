@@ -247,10 +247,33 @@ data elimination and does not support tag.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="cache3.MiniCache.inspect">
+<span class="sig-name descname"><span class="pre">inspect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="headerlink" href="#cache3.MiniCache.inspect" title="Permalink to this definition">#</a></dt>
+<dd><p>inspect the key in cache informations,
+returns the dict if the key is existed else None</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="cache3.MiniCache.memoize">
 <span class="sig-name descname"><span class="pre">memoize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Callable</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#cache3.MiniCache.memoize" title="Permalink to this definition">#</a></dt>
 <dd><p>The cache is decorated with the return value of the function,
 and the timeout is available.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cache3.MiniCache.ttl">
+<span class="sig-name descname"><span class="pre">ttl</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="headerlink" href="#cache3.MiniCache.ttl" title="Permalink to this definition">#</a></dt>
+<dd><p>returns the key time to live</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the key has been expired
+None : never expired
+float: life seconds</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>-1</p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
@@ -598,7 +621,9 @@ returns both value and tag</p>
 <li><a class="reference internal" href="#cache3.MiniCache.__init__"><code class="docutils literal notranslate"><span class="pre">MiniCache.__init__()</span></code></a></li>
 <li><a class="reference internal" href="#cache3.MiniCache.__repr__"><code class="docutils literal notranslate"><span class="pre">MiniCache.__repr__()</span></code></a></li>
 <li><a class="reference internal" href="#cache3.MiniCache.incr"><code class="docutils literal notranslate"><span class="pre">MiniCache.incr()</span></code></a></li>
+<li><a class="reference internal" href="#cache3.MiniCache.inspect"><code class="docutils literal notranslate"><span class="pre">MiniCache.inspect()</span></code></a></li>
 <li><a class="reference internal" href="#cache3.MiniCache.memoize"><code class="docutils literal notranslate"><span class="pre">MiniCache.memoize()</span></code></a></li>
+<li><a class="reference internal" href="#cache3.MiniCache.ttl"><code class="docutils literal notranslate"><span class="pre">MiniCache.ttl()</span></code></a></li>
 </ul>
 </li>
 </ul>
