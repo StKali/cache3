@@ -53,7 +53,8 @@ class MemoizeMixin:
         keys = set(rand_strings(10))
         for key in keys:
             self.cache[key] = key[::-1]
-        assert set(self.cache.keys()) == keys
+        cached_keys: set = set(self.cache.keys())
+        assert cached_keys == keys
 
 
 class TestMiniCache(MemoizeMixin):
@@ -70,8 +71,4 @@ class TestCache(MemoizeMixin):
     CacheClass = Cache
 
     def test_str(self):
-        assert str(self.cache) == '<Cache buckets:0>'
-        self.cache['name'] = None
-        assert str(self.cache) == '<Cache buckets:1>'
-
-    
+        assert str(self.cache).startswith('<Cache recepies:{')

@@ -7,14 +7,13 @@
 
 """
 
-import functools
 from collections import OrderedDict
 from contextlib import AbstractContextManager
 from threading import Lock
 from time import time as current
-from typing import Dict, Any, Iterable, Type, Optional, NoReturn, Tuple, Union, Callable, List
+from typing import Dict, Any, Iterable, Type, Optional, NoReturn, Tuple, Union
 
-from .util import Time, TG, Number, get_expire, empty, lazy, memoize
+from .util import MultiCache, Time, TG, Number, get_expire, lazy, memoize
 
 
 class NullContext(AbstractContextManager):
@@ -35,8 +34,49 @@ class NullContext(AbstractContextManager):
         """ empty method ... """
 
 
-LK: Type = Union[NullContext, Lock]
-SK: Type = Tuple[Any, TG]
+LK = Union[NullContext, Lock]
+SK = Tuple[Any, TG]
+DEFAULT_NAME: str = 'default.memcache'
+
+
+class Payload:
+    """ TODO _summary_
+    """
+    def __init__(self, 
+        value: Any,
+        store: Time = None,
+        timeout: Time = None,
+        ) -> None:
+        """_summary_
+
+        Args:
+            value (Any): _description_
+            expire (Time, optional): _description_. Defaults to None.
+        """
+        # 存储的值
+        self.value: Any = value
+        # 数据存储的时间
+        self.store: Time = store or current()
+        # 数据的超时时间
+        self.expire: Time = get_expire(timeout, self.store)
+        # 数据的最近一次访问时间
+        self.access: Time = self.store
+        # 累计访问次数
+        self.access_count: int = 0
+    def expired(self, now: Time = None) -> bool:
+        """_summary_
+
+        Args:
+            now (Time, optional): _description_. Defaults to None.
+
+        Returns:
+            bool: _description_
+        """
+        if self.expire is None:
+            return False
+        return (now or current()) > self.expire
+    def __repr__(self) -> str:
+        return f'Payload <{self.value} access:{self.access}>'
 
 
 class MiniCache:
@@ -44,186 +84,238 @@ class MiniCache:
     data elimination and does not support tag.
 
     Cache is built based on minicache, but cache is tag-supported.
+
+    底层数据结构是一个简单的hash表
+
     """
 
     def __init__(self, 
-                name: str, 
-                max_size: int = 1 << 30, 
-                evict_size: int = 16, 
-                evict_policy: str = 'lru',
-                thread_safe: bool = True,
-                ) -> None:
+        name: str = DEFAULT_NAME, 
+        max_size: Optional[int] = None,
+        evict: str = 'default', 
+        thread_safe: bool = True
+    ) -> None:
+        if max_size is not None and max_size < 1:
+            raise ValueError('max_size must > 0 or None')
         self.name: str = name
         self.max_size: int = max_size
-        self.evict_size: int = evict_size
-        self.evict_policy: str = evict_policy
+        self.evict: str = evict
         self._lock: LK = Lock() if thread_safe else NullContext()
-        self._cache: OrderedDict = OrderedDict()
-        self._expires: OrderedDict = OrderedDict()
+        self._store: OrderedDict = OrderedDict()
 
     def set(self, key: Any, value: Any, timeout: Time = None) -> bool:
+        now: Time = current()
         with self._lock:
-            self._set(key, value, get_expire(timeout))
-            return True
+            payload: Optional[Payload] = self._get(key, now)
+            if payload is None:
+                self._store[key] = Payload(value, now, timeout)
+                if self.max_size is not None and len(self._store) > self.max_size:
+                    self._evict(now)
+            else:
+                payload.value = value
+                payload.expire = get_expire(timeout, now)
+            self._store.move_to_end(key)    
+        return True
     
-    def get(self, key: Any, default: Any = None) -> Any:
-        
+    def ex_set(self, key: Any, value: Any, timeout: Time = None) -> bool:
+        """  Write the key-value relationship when the data does not exist in the cache,
+        otherwise the set operation will be cancelled
+        """
+        now: Time = current()
         with self._lock:
-            if self._has_expired(key):
-                self._del(key)
-                return default
-            return self._cache.get(key, default)
+            payload: Optional[Payload] = self._get(key, now, update_access=False)
+            if payload is not None:
+                return False
+            self._store[key] = Payload(value, now, timeout)
+            self._store.move_to_end(key)
+        return True
 
-    def get_many(self, keys: List[Any]) -> dict:
-        res: dict = {} 
+    def get(self, key: Any, default: Any = None) -> Any:
+        now: Time = current()
+        with self._lock:
+            payload: Optional[Payload] = self._get(key, now)
+        if payload is None:
+            return default
+        return payload.value
+
+    def get_many(self, *keys: Any) -> Dict[Any, Any]:
+        res: dict = {}
+        now: Time = current()
         with self._lock:
             for key in keys:
-                if self._has_expired(key):
-                    self._del(key)
-                else:
-                    res[key] = self._cache[key]
+                payload: Optional[Payload] = self._get(key, now)
+                if payload is not None:
+                    res[key] = payload.value
         return res
-
-    def ex_set(self, key: Any, value: Any, timeout: Time = None) -> bool:
-
-        with self._lock:
-            if self._has_expired(key):
-                self._set(key, value, get_expire(timeout))
-                return True
-            return False
-    
-    def delete(self, key: Any) -> bool:
-        with self._lock:
-            self._del(key)
-        return True
-    
-    def clear(self) -> bool:
-        with self._lock:
-            self._cache.clear()
-            self._expires.clear()
-        return True
-
-    def memoize(self, timeout: Time = None) -> Callable[[TG, Time], Callable]:
-        """ The cache is decorated with the return value of the function,
-        and the timeout is available. """
-
-        def decorator(func: Optional[Callable] = None) -> Callable[[Callable[[Any], Any]], Any]:
-            """ Decorator created by memoize() for callable `func`."""
-            if not callable(func):
-                raise TypeError(
-                    'The `memoize` decorator should be called with a `timeout` parameter.'
-                )
-            @functools.wraps(func)
-            def wrapper(*args, **kwargs) -> Any:
-                """Wrapper for callable to cache arguments and return values."""
-                value: Any = self.get(func.__name__, empty)
-                if value is empty:
-                    value: Any = func(*args, **kwargs)
-                    self.set(func.__name__, value, timeout)
-                return value
-            return wrapper
-        return decorator
 
     def incr(self, key: Any, delta: Number = 1) -> Number:
         """ Increases the value by delta (default 1) """
-
+        now: Time = current()
         with self._lock:
-            if self._has_expired(key):
-                self._del(key)
+            payload: Optional[Payload] = self._get(key, now)
+            if payload is None:
                 raise KeyError(f'key {key!r} not found in cache')
-            value = self._cache[key]
-            if not isinstance(value, (int, float)) or not isinstance(delta, (int, float)):
+            
+            if not isinstance(payload.value, (int, float)) or not isinstance(delta, (int, float)):
                 raise TypeError(
                     'unsupported operand type(s) for +/-: '
-                    f'{type(value)!r} and {type(delta)!r}'
+                    f'{type(payload.value)!r} and {type(delta)!r}'
                 )
-            value += delta
-            self._cache[key] = value
-            self._cache.move_to_end(key, last=False)
-        return value
+            payload.value += delta
+        self._store.move_to_end(key)
+        return payload.value
 
     def decr(self, key: Any, delta: Number = 1) -> Number:
         return self.incr(key, -delta)
 
-    def has_key(self, key: Any) -> bool:
+    def clear(self) -> bool:
         with self._lock:
-            if self._has_expired(key):
-                self._del(key)
-                return False
-            return True
-
-    def touch(self, key: Any, timeout: Time = None) -> bool:
-        with self._lock:
-            now = current()
-            if self._has_expired(key, now):
-                return False 
-            self._expires[key] = get_expire(timeout, now)
+            self._store.clear()
         return True
-
-    def pop(self, key: Any, default: Any = empty) -> Any:
-        with self._lock:
-            if self._has_expired(key):
-                if default is not empty:
-                    return default
-                raise KeyError(f'key {key!r} not found in cache')
-            del self._expires[key]
-            return self._cache.pop(key)
 
     def ttl(self, key: Any) -> Time:
         """ returns the key time to live
         
         Returns:
-            -1   : the key has been expired
+            -1   : the key has been expired or not existed
             None : never expired
             float: life seconds
         """
-        expire: Time = self._expires.get(key, -1)
-        if expire == -1 or expire is None:
-            return expire
-        return expire - current()
+        now: Time = current()
+        with self._lock:
+            payload: Optional[Payload] = self._get(key, now)
+        if payload is None:
+            return -1
+        return None if payload.expire is None else payload.expire - now
+
+    def delete(self, key: Any) -> bool:
+        with self._lock:
+            return self._delete(key)
 
     def inspect(self, key: Any) -> Optional[Dict[str, Any]]:
         """ inspect the key in cache informations, 
         returns the dict if the key is existed else None
         """
-        if key not in self._cache:
+        now: Time = current()
+        with self._lock:
+            payload: Optional[Payload] = self._get(key, now)
+        if payload is None:
             return None
-        expire: Time = self._expires.get(key, -1)
+        ins: Dict[str, Any] = vars(payload)
+        ins['key'] = key
+        ins['ttl'] = None if payload.expire is None else payload.expire - now
+        return ins
 
-        return {
-            'key': key,
-            'value': self._cache[key],
-            'expire': expire,
-            'ttl': expire if expire is None or expire == -1 else expire - current()
-        }
+    def pop(self, key: Any, default: Any = None) -> Any:
+        now: Time = current()
+        with self._lock:
+            payload: Optional[Payload] =self._get(key, now)
+            if payload is None:
+                return default
+            self._delete(key)
+        return payload.value
+
+    def exists(self, key: Any) -> bool:
+        """ Return True if the key in cache else False. """
+        now: Time = current()
+        with self._lock:
+            return self._get(key, now, update_access=False) is not None
+
+    def touch(self, key: Any, timeout: Time = None) -> bool:
+        """ Renew the key. When the key does not exist, false will be returned """
+
+        now: Time = current()
+        with self._lock:
+            payload: Optional[Payload] =self._get(key, now)
+            if payload is None:
+                return False
+            payload.expire = get_expire(timeout, now)
+        return True
 
     def keys(self) -> Iterable[Any]:
-        return iter(self._cache)
+        now: Time = current()
+        for key, paylaod in self._store.items():
+            if not paylaod.expired(now):
+                yield key
 
     def values(self) -> Iterable[Any]:
-        return self._cache.values()
+        now: Time = current()
+        for payload in self._store.values():
+            if not payload.expired(now):
+                yield payload.value
 
     def items(self) -> Iterable[Tuple[Any, ...]]:
-        return self._cache.items()
+        now: Time = current()
+        for key, payload in self._store.items():
+            if not payload.expired(now):
+                yield key, payload.value
 
-    def _has_expired(self, key: Any, now: Time = None) -> bool:
-        exp: Time = self._expires.get(key, -1)
-        return exp is not None and exp < (now or current())
+    def _evict(self, now: Time) -> None:
+        
+        now = now or current()
+        self._clean(now)
+        
+        if self.max_size is None:
+            return None
+        
+        evict_numebr: int = max(1, len(self) // 100)
+        evicted_keys = []
 
-    def _set(self, key: Any, value: Any, expire: Time) -> None:
-        self._cache[key] = value
-        self._cache.move_to_end(key, last=False)
-        self._expires[key] = expire
+        if self.evict == 'default':
+            result = sorted(((key, payload.expire) for key, payload in self._store.items()), key=lambda x: x[1])
+            evicted_keys = (item[0] for item in result[:evict_numebr])
+        
+        if self.evict == 'fifo':    
+            evicted_keys = (key for key in list(self._store.keys())[:evict_numebr])
+        
+        if self.evict == 'lru':
+            result = sorted(((key, payload.access) for key, payload in self._store.items()), key=lambda x: x[1])
+            evicted_keys = (item[0] for item in result[:evict_numebr])
 
-    def _del(self, key: Any) -> None:
-        try:
-            del self._cache[key]
-            del self._expires[key]
-        except KeyError:
-            ...
+        if self.evict == 'lfu':
+            result = sorted(((key, payload.access_count) for key, payload in self._store.items()), key=lambda x: x[1])
+            evicted_keys = (item[0] for item in result[:evict_numebr])
+        
+        for key in evicted_keys:
+            self._delete(key)
+
+    def _get(self, key: Any, now: Time, update_access: bool = True) -> Optional[Payload]:
+        payload: Optional[Payload] = self._store.get(key)
+        if payload is not None:
+            if payload.expired(now):
+                self._delete(key)
+            else:
+                if update_access:
+                    payload.access_count += 1
+                    payload.access = now
+                return payload
+        return None
     
+    def _delete(self, key: Any) -> bool:
+        try:
+            del self._store[key]
+            return True
+        except KeyError:
+            return False
+
+    def _clean(self, now: Time = None) -> None:
+        """ 删除当前缓存中所有过期的key """
+        now: Time = now or current()
+        for key in list(self._store.keys()):
+            payload: Optional[Payload] = self._store.get(key)
+            if payload is not None:
+                if payload.expired(now):
+                    self._delete(key)
+
     def __len__(self) -> int:
-        return len(self._cache)
+        """ _summary_
+        Warning:
+            当前返回的长度是包含了过期的key的, 获取不含过期key长度的方法是主动调用
+            clean 方法来删除过期的key
+        Returns:
+            int: count of item in current cache 
+        """
+        return len(self._store)
     
     def __repr__(self) -> str:
         return f'<MiniCache length:{len(self)}>'
@@ -232,127 +324,72 @@ class MiniCache:
     __delitem__ = delete
     __getitem__ = get
     __setitem__ = set
-    __contains__ = has_key
+    __contains__ = has_key = exists
+    memoize = memoize
 
 
-class _Caches(dict):
-
-    def __init__(self, name: str, *args, **kwargs) -> None:
-        self.name: str = name
-        self.args = args
-        self.kwargs = kwargs
-        super(_Caches, self).__init__()
-
-    def __missing__(self, key: Any) -> MiniCache:
-        cache: MiniCache = MiniCache(f'{self.name}:{key}', *self.args, **self.kwargs)
-        self[key] = cache
-        return cache
+LazyMiniCache = lazy(MiniCache)
 
 
-class Cache:
-    """ Memory-based cache instance """
+class Cache(MultiCache):
+
+    def __init__(self, name: str = DEFAULT_NAME, max_size: Optional[int] = None, thread_safe: bool = True) -> None:
+        """_summary_
+
+        Args:
+            name (str, optional): _description_. Defaults to DEFAULT_NAME.
+            max_size (Optional[int], optional): _description_. Defaults to None.
+            thread_safe (bool, optional): _description_. Defaults to True.
+        """
+        self._name: str = name
+        self._max_size: Optional[int] = max_size
+        self._thread_safe: bool = thread_safe
+        self._mtx: Lock = Lock()
+        self._recipes: Dict[TG, MiniCache] = {}
+
+    def get_recipe(self, tag: TG) -> Type:
+        """_summary_
+
+        Args:
+            tag (TG): _description_
+
+        Returns:
+            MiniCache: _description_
+        """
+        # 尽可能的减少竞争
+        try:
+            return self._recipes[tag]
+        except KeyError:
+            with self._mtx:
+                if tag in self._recipes:
+                    return self._recipes[tag]
+                recipe = self._create_recipe(tag)
+                self._recipes[tag] = recipe
+            return recipe
     
-    def __init__(self, name: str, *args, **kwargs) -> None:
-        self.name: str = name
-        def _factory() -> _Caches:
-            return _Caches(name, *args, **kwargs)
-        self._factory = _factory
-        self._caches = _factory()
-
-    def set(self, key: Any, value: Any, timeout: Time = None, tag: TG = None) -> bool:
-        cache = self._caches[tag]
-        return cache.set(key, value, timeout)
+    def _create_recipe(self, tag: TG) -> MiniCache:
+        name: str = f'{self._name}:{tag}'
+        return MiniCache(name=name, max_size=self._max_size, thread_safe=self._thread_safe)
     
-    def get(self, key: Any, default: Any = None, tag: TG = None) -> Any:
-        cache = self._caches[tag]
-        return cache.get(key, default)
-
-    def get_many(self, keys: List[Any], tag: TG = None) -> dict:
-        cache = self._caches[tag]
-        return cache.get_many(keys)
-
-    def ex_set(self, key: Any, value: Any, timeout: Time = None, tag: TG = None) -> bool:
-        cache = self._caches[tag]
-        return cache.ex_set(key, value, timeout)
-
-    def pop(self, key: Any, default: Any = empty, tag: TG = None) -> Any:
-        cache = self._caches[tag]
-        return cache.pop(key, default)
-    
-    def delete(self, key: Any, tag: TG = None) -> bool:
-        cache = self._caches[tag]
-        return cache.delete(key)
+    def drop(self, tag: TG) -> bool:
+        with self._mtx:
+            try:
+                del self._recipes[tag]
+            except KeyError:
+                ...
+        return True
 
     def clear(self) -> bool:
-        self._caches = self._factory()
+        with self._mtx:
+            del self._recipes
+            self._recipes = {}
         return True
-    
-    def incr(self, key: Any, delta: Number = 1, tag: TG = None) -> Number:
-        cache = self._caches[tag]
-        return cache.incr(key, delta)
-
-    def decr(self, key: Any, delta: Number = 1, tag: TG = None) -> Number:
-        cache = self._caches[tag]
-        return cache.decr(key, delta)
-
-    def has_key(self, key: Any, tag: TG = None) -> bool:
-        cache = self._caches[tag]
-        return cache.has_key(key)
-
-    def touch(self, key: Any, timeout: Time = None, tag: TG = None) -> bool:
-        cache = self._caches[tag]
-        return cache.touch(key, timeout)
-
-    def ttl(self, key: Any, tag: TG = None) -> Time:
-        cache = self._caches[tag]
-        return cache.ttl(key)
-
-    def inspect(self, key: Any, tag: TG = None) -> Optional[Dict]:
-        cache = self._caches[tag]
-        ins = cache.inspect(key)
-        if ins is not None:
-            ins['tag'] = tag
-        return ins
-    
-    def items(self, tag: TG = empty) -> Iterable[Tuple[Any, ...]]:
-        if tag is empty:
-            for _tag, cache in self._caches.items():
-                for m in cache.items():
-                    yield m[0], m[1], _tag
-        else:
-            cache = self._caches[tag]
-            return cache.items()
-
-    def keys(self, tag: TG = empty) -> Iterable[Any]:
-        if tag is empty:
-            for cache in self._caches.values():
-                for k in cache:
-                    yield k
-        else:
-            cache = self._caches[tag]
-            return cache.keys()
-    
-    def values(self, tag: TG = empty) -> Iterable[Any]:
-        if tag is empty:
-            for cache in self._caches.values():
-                for v in cache.values():
-                    yield v
-        else:
-            cache = self._caches[tag]
-            return cache.values()
 
     def __len__(self) -> int:
-        return sum(len(cache) for cache in self._caches.values())
+        return sum(len(recipe) for recipe in self._recipes.values())
     
     def __repr__(self) -> str:
-        return f'<Cache buckets:{len(self._caches)}>'
-
-    memoize = memoize
-    __iter__ = keys
-    __setitem__ = set
-    __getitem__ = get
-    __delitem__ = delete
-    __contains__ = has_key
+        return f'<Cache recepies:{self._recipes}>'
 
 
 LazyCache = lazy(Cache)
