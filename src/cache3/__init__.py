@@ -8,16 +8,16 @@ Cache3 is a MIT licensed  safe and lightweight cache library, written in pure-Py
 """
 
 from cache3.util import lazy, LazyObject
-from cache3.disk import DiskCache, LazyDiskCache
-from cache3.memory import Cache, MiniCache, LazyCache
+from cache3.disk import MiniDiskCache, LazyMiniDiskCache, DiskCache, LazyDiskCache
+from cache3.memory import MiniCache, LazyMiniCache, Cache, LazyCache
 
 __author__: str = 'St·Kali <clarkmonkey@163.com>'
 __name__: str = 'cache3'  # pylint: disable=redefined-builtin
 __email__: str = 'clarkmonkey@163.com'
-__version__: str = '0.4.3'
+__version__: str = '0.4.4'
 
 __all__: list = [
-    'DiskCache', 'LazyDiskCache',
-    'Cache', 'MiniCache', 'LazyCache',
-    'LazyObject', 'lazy',
+    'MiniCache', 'LazyMiniCache', 'Cache', 'LazyCache', 
+    'MiniDiskCache', 'LazyMiniDiskCache', 'DiskCache', 'LazyDiskCache',
+    'lazy', 'LazyObject', 
 ]
