@@ -33,7 +33,7 @@ class CacheApiMixin:
         
         # items
         for tag in cases:
-            for key, value in self.cache.items(tag):
+            for key, value, *rest in self.cache.items(tag):
                 assert key == value[::-1]
 
 
