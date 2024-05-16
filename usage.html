@@ -1,15 +1,15 @@
 <!doctype html>
-<html class="no-js" lang="en">
+<html class="no-js" lang="en" data-content_root="./">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="API" href="api.html" /><link rel="prev" title="Welcome to cache3’s documentation!" href="index.html" />
 
-    <!-- Generated with Sphinx 6.2.1 and Furo 2023.03.27 -->
+    <!-- Generated with Sphinx 7.3.7 and Furo 2024.05.06 -->
         <title>Overview - cache3 0.4.3 documentation</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
-    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=387cc868" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
     
     
 
@@ -70,7 +70,7 @@
   <symbol id="svg-sun" viewBox="0 0 24 24">
     <title>Light mode</title>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
       <circle cx="12" cy="12" r="5"></circle>
       <line x1="12" y1="1" x2="12" y2="3"></line>
       <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -85,7 +85,7 @@
   <symbol id="svg-moon" viewBox="0 0 24 24">
     <title>Dark mode</title>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
       <path stroke="none" d="M0 0h24v24H0z" fill="none" />
       <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
     </svg>
@@ -93,7 +93,7 @@
   <symbol id="svg-sun-half" viewBox="0 0 24 24">
     <title>Auto light/dark mode</title>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
       <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
       <circle cx="12" cy="12" r="9" />
       <path d="M13 12h5" />
@@ -101,6 +101,60 @@
       <path d="M13 18h1" />
       <path d="M13 9h4" />
       <path d="M13 6h1" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" /
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
     </svg>
   </symbol>
 </svg>
@@ -113,6 +167,8 @@
 <label class="overlay toc-overlay" for="__toc">
   <div class="visually-hidden">Hide table of contents sidebar</div>
 </label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
 
 
 
@@ -131,7 +187,8 @@
       <div class="theme-toggle-container theme-toggle-header">
         <button class="theme-toggle">
           <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
-          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
           <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
@@ -203,11 +260,17 @@
           <span>Back to top</span>
         </a>
         <div class="content-icon-container">
-          
+          <div class="view-this-page">
+  <a class="muted-link" href="_sources/usage.rst.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
 <div class="theme-toggle-container theme-toggle-content">
             <button class="theme-toggle">
               <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
-              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
               <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
@@ -217,9 +280,9 @@
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
-        <article role="main">
+        <article role="main" id="furo-main-content">
           <section id="overview">
-<h1>Overview<a class="headerlink" href="#overview" title="Permalink to this heading">#</a></h1>
+<h1>Overview<a class="headerlink" href="#overview" title="Link to this heading">¶</a></h1>
 <p><a class="reference internal" href="index.html"><span class="doc">cache3</span></a> supports both <strong>memory</strong> and <strong>disk</strong> cache backends.</p>
 <p><strong>memory-based</strong> cache has good performance but does not support data persistence.</p>
 <p><strong>disk-based</strong> caches support persistence but have slightly lower performance.</p>
@@ -227,7 +290,7 @@
 <p>The built-in cache policies are LRU, LFU, FIFO, and if these don’t meet your needs, you can extend them with <cite>manager</cite>.</p>
 </section>
 <section id="installation">
-<span id="id1"></span><h1>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">#</a></h1>
+<span id="id1"></span><h1>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h1>
 <p>To use cache3, first install it using pip:</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </span>cache3
 </pre></div>
@@ -240,7 +303,7 @@
 </div>
 </section>
 <section id="quick-start">
-<h1>Quick start<a class="headerlink" href="#quick-start" title="Permalink to this heading">#</a></h1>
+<h1>Quick start<a class="headerlink" href="#quick-start" title="Link to this heading">¶</a></h1>
 <p>Creating a cache is so easy, and all cache parameters are set to conservative defaults. Default is a good choice if you don’t want too much detail, but it’s not guaranteed to be efficient.</p>
 <p>In class docs you can know more detailed parameters and configuration information.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">from</span> <span class="nn">cache3</span> <span class="kn">import</span> <span class="n">SafeCache</span>
@@ -260,7 +323,7 @@
 </pre></div>
 </div>
 <section id="set-get-delete-del-has-key-in">
-<h2>set, get, delete(del), has_key(in)<a class="headerlink" href="#set-get-delete-del-has-key-in" title="Permalink to this heading">#</a></h2>
+<h2>set, get, delete(del), has_key(in)<a class="headerlink" href="#set-get-delete-del-has-key-in" title="Link to this heading">¶</a></h2>
 <p>set an item, get a value, and delete a key using the usual operators:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">6</span><span class="p">]:</span> <span class="n">cache</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;clark monkey&#39;</span>
 
@@ -324,7 +387,7 @@ If you want to specify these parameters, <code class="xref py py-meth docutils l
 </div>
 </section>
 <section id="ex-set">
-<h2>ex_set<a class="headerlink" href="#ex-set" title="Permalink to this heading">#</a></h2>
+<h2>ex_set<a class="headerlink" href="#ex-set" title="Link to this heading">¶</a></h2>
 <p>It ensures <strong>set</strong> is safety through exclusive locks. <code class="xref py py-class docutils literal notranslate"><span class="pre">SafeCache</span></code> uses <a class="reference external" href="https://docs.python.org/3/library/threading.html#threading.Lock">threading.Lock</a>, and <a class="reference internal" href="#disk-based"><span class="std std-ref">disk-based cache</span></a> uses file locks, so they are process-safe.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># clear the cache</span>
 <span class="n">In</span> <span class="p">[</span><span class="mi">22</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
@@ -347,7 +410,7 @@ If you want to specify these parameters, <code class="xref py py-meth docutils l
 </div>
 </section>
 <section id="get-many">
-<h2>get_many<a class="headerlink" href="#get-many" title="Permalink to this heading">#</a></h2>
+<h2>get_many<a class="headerlink" href="#get-many" title="Link to this heading">¶</a></h2>
 <p>Get many items at one time, support tag parameter, and only one tag can be specified</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Clear the cache</span>
 <span class="n">In</span> <span class="p">[</span><span class="mi">27</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
@@ -362,7 +425,7 @@ If you want to specify these parameters, <code class="xref py py-meth docutils l
 </div>
 </section>
 <section id="memoize">
-<h2>memoize<a class="headerlink" href="#memoize" title="Permalink to this heading">#</a></h2>
+<h2>memoize<a class="headerlink" href="#memoize" title="Link to this heading">¶</a></h2>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p><code class="xref py py-meth docutils literal notranslate"><span class="pre">memoize</span></code> This decorator is insensitive to parameters.</p>
@@ -380,7 +443,7 @@ If you want to specify these parameters, <code class="xref py py-meth docutils l
 </div>
 </section>
 <section id="inspect">
-<h2>inspect<a class="headerlink" href="#inspect" title="Permalink to this heading">#</a></h2>
+<h2>inspect<a class="headerlink" href="#inspect" title="Link to this heading">¶</a></h2>
 <p><code class="xref py py-meth docutils literal notranslate"><span class="pre">inspect</span></code> can obtain almost all the information of the key. Because the storage backend is unknown, there are differences between different implementations.</p>
 <ul class="simple">
 <li><p>Memory backend</p></li>
@@ -420,7 +483,7 @@ If you want to specify these parameters, <code class="xref py py-meth docutils l
 </div>
 </section>
 <section id="others">
-<h2>others<a class="headerlink" href="#others" title="Permalink to this heading">#</a></h2>
+<h2>others<a class="headerlink" href="#others" title="Link to this heading">¶</a></h2>
 <p>Some APIs that are not commonly used but are very useful: <code class="xref py py-meth docutils literal notranslate"><span class="pre">ttl</span></code>, <code class="xref py py-meth docutils literal notranslate"><span class="pre">touch</span></code>, <code class="xref py py-meth docutils literal notranslate"><span class="pre">clear</span></code></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Get the ttl</span>
 <span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="n">cache</span><span class="o">.</span><span class="n">ttl</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
@@ -436,7 +499,7 @@ If you want to specify these parameters, <code class="xref py py-meth docutils l
 </div>
 </section>
 <section id="iterable">
-<h2>iterable<a class="headerlink" href="#iterable" title="Permalink to this heading">#</a></h2>
+<h2>iterable<a class="headerlink" href="#iterable" title="Link to this heading">¶</a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># It&#39;s iterable.</span>
 <span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
 <span class="o">...</span><span class="p">:</span>     <span class="n">cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s1">&#39;test:get_many&#39;</span><span class="p">)</span>
@@ -451,26 +514,26 @@ If you want to specify these parameters, <code class="xref py py-meth docutils l
 </section>
 </section>
 <section id="memory-based-cache">
-<span id="memory-based"></span><h1>memory-based cache<a class="headerlink" href="#memory-based-cache" title="Permalink to this heading">#</a></h1>
+<span id="memory-based"></span><h1>memory-based cache<a class="headerlink" href="#memory-based-cache" title="Link to this heading">¶</a></h1>
 <p>Memory-based caches will completely lose the data in the cache when the program crashes or exits, in other words, they do not support data persistence.</p>
 <section id="minicache">
-<h2>MiniCache<a class="headerlink" href="#minicache" title="Permalink to this heading">#</a></h2>
+<h2>MiniCache<a class="headerlink" href="#minicache" title="Link to this heading">¶</a></h2>
 <p><code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleCache</span></code> is a thread-unsafe cache, which aims to provide high performance but does not guarantee data safety under multi-threading. <code class="xref py py-class docutils literal notranslate"><span class="pre">SafeCache</span></code> is a good choice if you want thread safety.</p>
 </section>
 <section id="cache">
-<h2>Cache<a class="headerlink" href="#cache" title="Permalink to this heading">#</a></h2>
+<h2>Cache<a class="headerlink" href="#cache" title="Link to this heading">¶</a></h2>
 <p><code class="xref py py-class docutils literal notranslate"><span class="pre">SafeCache</span></code> is a thread-safe cache. It has exactly the same implementation as <code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleCache</span></code>, based on Python’s <a class="reference external" href="https://docs.python.org/3/library/collections.html#collections.OrderedDict">OrderedDict</a>, the difference is the type of Lock, <code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleCache</span></code> Lock is an empty lock, while  <code class="xref py py-class docutils literal notranslate"><span class="pre">SafeCache</span></code> uses <a class="reference external" href="https://docs.python.org/3/library/threading.html#threading.Lock">threading.Lock</a> to ensure its thread safety.</p>
 </section>
 </section>
 <section id="disk-based-cache">
-<span id="disk-based"></span><h1>disk-based cache<a class="headerlink" href="#disk-based-cache" title="Permalink to this heading">#</a></h1>
+<span id="disk-based"></span><h1>disk-based cache<a class="headerlink" href="#disk-based-cache" title="Link to this heading">¶</a></h1>
 <p>The disk-based cache backend is implemented in <a class="reference external" href="https://www.sqlite.org/index.html">SQLite3</a> because it is lightweight enough and performs well.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Since the disk cache is based on <a class="reference external" href="https://www.sqlite.org/index.html">SQLite3</a>, even after a series of optimizations, it still needs to be carefully considered whether it will become a concurrency bottleneck. In fact, in most cases it is sufficient.</p>
 </div>
 <section id="diskcache">
-<h2>DiskCache<a class="headerlink" href="#diskcache" title="Permalink to this heading">#</a></h2>
+<h2>DiskCache<a class="headerlink" href="#diskcache" title="Link to this heading">¶</a></h2>
 <p><a class="reference internal" href="api.html#cache3.DiskCache" title="cache3.DiskCache"><code class="xref py py-class docutils literal notranslate"><span class="pre">DiskCache</span></code></a> overrides <code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleDiskCache</span></code>’s <code class="xref py py-meth docutils literal notranslate"><span class="pre">serialize()</span></code> and <code class="xref py py-meth docutils literal notranslate"><span class="pre">deserialize()</span></code> methods by inheriting <code class="xref py py-class docutils literal notranslate"><span class="pre">PickleMixin</span></code>  mixins to support more data types, but has no difference with <code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleDiskCache</span></code>.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">DiskCache</span><span class="p">(</span><span class="n">PickleMixin</span><span class="p">,</span> <span class="n">SimpleDiskCache</span><span class="p">):</span>
 </pre></div>
@@ -530,9 +593,9 @@ If you want to specify these parameters, <code class="xref py py-meth docutils l
       
     </aside>
   </div>
-</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-    <script src="_static/doctools.js"></script>
-    <script src="_static/sphinx_highlight.js"></script>
-    <script src="_static/scripts/furo.js"></script>
+</div><script src="_static/documentation_options.js?v=5bfaad31"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/scripts/furo.js?v=4e2eecee"></script>
     </body>
 </html>
