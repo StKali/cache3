@@ -321,7 +321,8 @@ class Cache:
                     yield m[0], m[1], _tag
         else:
             cache = self._caches[tag]
-            return cache.items()
+            for m in cache.items():
+                yield m[0], m[1], tag
 
     def keys(self, tag: TG = empty) -> Iterable[Any]:
         if tag is empty:
@@ -330,7 +331,8 @@ class Cache:
                     yield k
         else:
             cache = self._caches[tag]
-            return cache.keys()
+            for k in cache.keys():
+                yield k
     
     def values(self, tag: TG = empty) -> Iterable[Any]:
         if tag is empty:
@@ -339,7 +341,8 @@ class Cache:
                     yield v
         else:
             cache = self._caches[tag]
-            return cache.values()
+            for v in cache.values():
+                yield v
 
     def __len__(self) -> int:
         return sum(len(cache) for cache in self._caches.values())
